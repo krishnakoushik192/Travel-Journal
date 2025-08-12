@@ -1,19 +1,95 @@
 import React from 'react';
-import { View, Text, Button } from 'react-native';
+import { Image } from 'react-native';
+import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const LoginScreen = (props) => {
+const { width, height } = Dimensions.get('window');
 
+export default function LoginScreen(props) {
   return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' , backgroundColor:'#E8F5E9'}}>
-          <Text>Hello, World!</Text>
-          <Button
-            title="Login"
-        onPress={() => {
-          props.navigation.navigate('Tabs');
-        }}
-      />
-    </View>
-  );
-};
+    <ImageBackground
+      source={require('../assets/BG.jpg')}
+      style={styles.background}
+      resizeMode="cover"
+    >
 
-export default LoginScreen;
+      {/* Black Overlay */}
+      <View style={styles.overlay}>
+        <Image
+          source={require('../assets/logo.png')}
+          style={{ width: width * 0.6, height: 200 }}
+          resizeMode='contain'
+        />
+        <Text style={styles.title}>Travel Journal</Text>
+        <Text style={styles.subtitle}>Capture your journeys anywhere</Text>
+
+        {/* Google Sign-in */}
+        <TouchableOpacity style={styles.googleBtn} onPress={()=>{props.navigation.replace('Tabs')}}>
+          <MaterialCommunityIcons name="google" size={24} color="#fff" style={styles.icon} />
+          <Text style={styles.btnText}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        <Text style={{color:'white', marginBottom:5,size:20}}>or</Text>
+        
+        {/* Apple Sign-in */}
+        <TouchableOpacity style={styles.appleBtn}>
+          <MaterialCommunityIcons name="apple" size={24} color="#fff" style={styles.icon} />
+          <Text style={styles.btnText}>Sign in with Apple</Text>
+        </TouchableOpacity>
+      </View>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  subtitle: {
+    color: '#ddd',
+    fontSize: 16,
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F9D58',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '100%',
+  },
+  appleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#000', // Apple black
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+  },
+  icon: {
+    marginRight: 10,
+  },
+  btnText: {
+    color: '#fff',
+    fontSize: 20,
+  },
+});

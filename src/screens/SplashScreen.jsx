@@ -5,8 +5,8 @@ import LinearGradient from 'react-native-linear-gradient';
 const SplashScreen = (props) => {
   useEffect(()=>{
     setTimeout(() => {
-      props.navigation.navigate('Login');
-    }, 2000);
+      props.navigation.replace('Login');
+    }, 3000);
   }, []);
   return (
     <LinearGradient colors={[ '#66BB6A','white']} style={{flex:1, justifyContent:'center', }} >
@@ -16,6 +16,7 @@ const SplashScreen = (props) => {
           style={{ resizeMode: 'contain', width: '100%', height: 280 }}
       />
       <Text style={{ color: '#403128', fontSize: 24,fontWeight: 'bold' }}>Welcome to Travel Journal</Text>
+      <Text style={{color:'#403128',fontSize:18}}>Capture your journeys anywhere</Text>
     </View>
     </LinearGradient>
   );
