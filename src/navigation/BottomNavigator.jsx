@@ -10,21 +10,22 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 const Tab = createBottomTabNavigator();
 
 const BottomNavigator = () => {
-  const isDarkMode = true;
+  // const isDarkMode = true;
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#437373' , 
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          position: 'absolute',
-          paddingBottom: 5,
+          backgroundColor: '#1d4d2d',
+          paddingBottom: 30,
           paddingTop: 5,
+          // position: 'absolute',
+          // bottom: 0,
+          // left: 0,
+          // right: 0,
         },
-        tabBarActiveTintColor:  '#F2DCEC' , 
-        tabBarInactiveTintColor: '#A9D4D9' ,
+        tabBarActiveTintColor: '#ffffff',
+        tabBarInactiveTintColor: '#A9D4D9',
         tabBarLabelStyle: {
           fontSize: 16,
           fontWeight: '600',

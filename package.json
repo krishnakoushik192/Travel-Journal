@@ -7,7 +7,8 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.80.2",
@@ -15,10 +16,14 @@
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/stack": "^7.4.7",
     "@types/react-native-vector-icons": "^6.4.18",
+    "patch-package": "^8.0.0",
     "react": "19.1.0",
     "react-native": "0.80.2",
     "react-native-gesture-handler": "^2.28.0",
+    "react-native-image-crop-picker": "^0.40.0",
+    "react-native-image-picker": "^8.2.1",
     "react-native-linear-gradient": "^2.8.3",
+    "react-native-permissions": "^5.4.2",
     "react-native-safe-area-context": "^5.6.0",
     "react-native-screens": "^4.13.1",
     "react-native-vector-icons": "^10.3.0"
