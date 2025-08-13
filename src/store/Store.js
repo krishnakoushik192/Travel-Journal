@@ -6,7 +6,7 @@ export const useJournalStore = create((set) => ({
     set((state) => ({
       journals: [...state.journals, { id: Date.now(), ...entry }],
     })),
-  updateJournal: (updatedEntry) =>
+    updateJournal: (updatedEntry) =>
     set((state) => ({
       journals: state.journals.map((journal) =>
         journal.id === updatedEntry.id ? { ...journal, ...updatedEntry } : journal
