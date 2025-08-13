@@ -1,3 +1,4 @@
+// src/screens/AddJournalScreen.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -13,6 +14,7 @@ import {
   Platform,
   Alert,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
@@ -23,7 +25,7 @@ import { useJournalStore } from '../store/Store';
 const { width, height } = Dimensions.get('window');
 
 const AddEditJournalScreen = ({ route, navigation }) => {
-  const { addJournal, updateJournal } = useJournalStore();
+  const { addJournal, updateJournal, isLoading } = useJournalStore();
 
   // Check if we're in edit mode
   const journalToEdit = route?.params?.journal;
@@ -35,6 +37,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   const [productImage, setProductImage] = useState([]);
   const [locationName, setLocationName] = useState('Detecting location...');
   const [dateTime, setDateTime] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isEditMode) {
@@ -210,7 +213,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setProductImage(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validation: Title is required
     if (!title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title for your journal entry.');
@@ -223,38 +226,68 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       return;
     }
 
-    const journalData = {
-      title,
-      description,
-      productImage,
-      locationName,
-      dateTime,
-    };
+    setIsSaving(true);
 
-    if (isEditMode) {
-      // Update existing journal
-      updateJournal({
-        ...journalData,
-        id: journalToEdit.id, // Keep the same ID
-      });
-      Alert.alert('Updated', 'Your journal entry has been updated.', [
-        {
-          text: 'OK',
-          onPress: () => navigation?.goBack() // Go back to details screen
-        }
-      ]);
-    } else {
-      // Add new journal
-      addJournal({
-        ...journalData,
-        id: Math.random().toString(36).substr(2, 9),
-      });
+    try {
+      const journalData = {
+        title,
+        description,
+        productImage,
+        locationName,
+        dateTime,
+      };
 
-      // Reset local state after saving
-      setTitle('');
-      setDescription('');
-      setProductImage([]);
-      Alert.alert('Saved', 'Your journal entry has been saved.');
+      if (isEditMode) {
+        // Update existing journal
+        await updateJournal({
+          ...journalData,
+          id: journalToEdit.id, // Keep the same ID
+        });
+
+        Alert.alert('Updated', 'Your journal entry has been updated.', [
+          {
+            text: 'OK',
+            onPress: () => navigation?.goBack() // Go back to details screen
+          }
+        ]);
+      } else {
+        // Add new journal
+        const newJournal = await addJournal({
+          ...journalData,
+          id: Math.random().toString(36).substr(2, 9),
+        });
+
+        // Reset local state after saving
+        setTitle('');
+        setDescription('');
+        setProductImage([]);
+        detectLocation(); // Get new location for next entry
+        updateDateTime(); // Update time for next entry
+
+        Alert.alert('Saved', 'Your journal entry has been saved successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to the details of the newly created journal
+              navigation?.navigate('Details', { journal: newJournal });
+            }
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error saving journal:', error);
+      Alert.alert(
+        'Save Error',
+        'Failed to save journal entry. Please try again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => { }
+          }
+        ]
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -286,6 +319,23 @@ const AddEditJournalScreen = ({ route, navigation }) => {
             <MaterialCommunityIcons name="close" size={24} color="#666" />
             <Text style={[styles.optionText, { color: '#666' }]}>Cancel</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const LoadingModal = () => (
+    <Modal
+      visible={isSaving || isLoading}
+      transparent={true}
+      animationType="fade"
+    >
+      <View style={styles.loadingOverlay}>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+          <Text style={styles.loadingText}>
+            {isEditMode ? 'Updating journal entry...' : 'Saving journal entry...'}
+          </Text>
         </View>
       </View>
     </Modal>
@@ -328,6 +378,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           placeholderTextColor="#ccc"
           value={title}
           onChangeText={setTitle}
+          editable={!isSaving && !isLoading}
         />
 
         <TextInput
@@ -337,6 +388,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           multiline
           value={description}
           onChangeText={setDescription}
+          editable={!isSaving && !isLoading}
         />
 
         <View style={styles.locationRow}>
@@ -351,21 +403,21 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.imagePickerButton,
-            productImage.length >= 5 && styles.imagePickerButtonDisabled
+            (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerButtonDisabled
           ]}
           onPress={handleImageSelection}
-          disabled={productImage.length >= 5}
+          disabled={productImage.length >= 5 || isSaving || isLoading}
         >
           <MaterialCommunityIcons
             name="camera-plus"
             size={20}
-            color={productImage.length >= 5 ? "#999" : "#fff"}
+            color={(productImage.length >= 5 || isSaving || isLoading) ? "#999" : "#fff"}
             style={{ marginRight: 8 }}
           />
           <Text
             style={[
               styles.imagePickerText,
-              productImage.length >= 5 && styles.imagePickerTextDisabled
+              (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerTextDisabled
             ]}
           >
             {productImage.length >= 5 ? 'Maximum 5 photos reached' : `Add Images (${productImage.length}/5)`}
@@ -385,6 +437,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                 <TouchableOpacity
                   style={styles.removeButton}
                   onPress={() => removeImage(index)}
+                  disabled={isSaving || isLoading}
                 >
                   <MaterialCommunityIcons name="close-circle" size={20} color="#ff4444" />
                 </TouchableOpacity>
@@ -403,23 +456,30 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.saveButton,
-            productImage.length === 0 && styles.saveButtonDisabled
+            (productImage.length === 0 || isSaving || isLoading) && styles.saveButtonDisabled
           ]}
           onPress={handleSave}
-          disabled={productImage.length === 0}
+          disabled={productImage.length === 0 || isSaving || isLoading}
         >
+          {(isSaving || isLoading) ? (
+            <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+          ) : null}
           <Text
             style={[
               styles.saveText,
-              productImage.length === 0 && styles.saveTextDisabled
+              (productImage.length === 0 || isSaving || isLoading) && styles.saveTextDisabled
             ]}
           >
-            {isEditMode ? 'Update Journal Entry' : 'Save Journal Entry'}
+            {isSaving || isLoading
+              ? (isEditMode ? 'Updating...' : 'Saving...')
+              : (isEditMode ? 'Update Journal Entry' : 'Save Journal Entry')
+            }
           </Text>
         </TouchableOpacity>
       </View>
 
       {Platform.OS === 'android' && <AndroidImageOptionsModal />}
+      <LoadingModal />
     </ImageBackground>
   );
 };
@@ -542,12 +602,14 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 20,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    flexDirection: 'row',
   },
   saveText: {
     fontWeight: '700',
@@ -633,5 +695,25 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     color: '#333',
     fontWeight: '600',
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    minWidth: 200,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

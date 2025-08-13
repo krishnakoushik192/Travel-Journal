@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/screens/HomeScreen.jsx
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +8,8 @@ import {
   Dimensions,
   TextInput,
   ImageBackground,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from '../compoenents/Header';
@@ -33,19 +36,62 @@ const colors = {
 
 export default function HomeScreen(props) {
   const [search, setSearch] = useState('');
-  const { journals } = useJournalStore();
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  const { 
+    journals, 
+    isLoading, 
+    error, 
+    searchJournals, 
+    refreshJournals,
+    clearError 
+  } = useJournalStore();
 
-  // Filter journals based on search query
-  const filteredJournals = journals.filter(journal => {
-    if (!search.trim()) return true;
-    
-    const searchLower = search.toLowerCase();
-    return (
-      journal.title?.toLowerCase().includes(searchLower) ||
-      journal.description?.toLowerCase().includes(searchLower) ||
-      journal.locationName?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Handle search with debouncing
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (search.trim()) {
+        setIsSearching(true);
+        try {
+          const results = await searchJournals(search);
+          setSearchResults(results);
+        } catch (error) {
+          Alert.alert('Search Error', 'Failed to search journals');
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [search]);
+
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error, [
+        {
+          text: 'OK',
+          onPress: () => clearError(),
+        },
+        {
+          text: 'Retry',
+          onPress: () => {
+            clearError();
+            refreshJournals();
+          },
+        },
+      ]);
+    }
+  }, [error]);
+
+  // Determine which journals to display
+  const displayJournals = search.trim() ? searchResults : journals;
+  const showLoader = isLoading || isSearching;
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -71,6 +117,15 @@ export default function HomeScreen(props) {
       <Text style={styles.emptyTitle}>No Results Found</Text>
       <Text style={styles.emptySubtitle}>
         Try searching with different keywords
+      </Text>
+    </View>
+  );
+
+  const renderLoader = () => (
+    <View style={styles.loaderContainer}>
+      <ActivityIndicator size="large" color={colors.accent} />
+      <Text style={styles.loaderText}>
+        {isSearching ? 'Searching...' : 'Loading journals...'}
       </Text>
     </View>
   );
@@ -106,35 +161,48 @@ export default function HomeScreen(props) {
               onPress={() => setSearch('')}
             />
           )}
+          {isSearching && (
+            <ActivityIndicator 
+              size="small" 
+              color={colors.textSecondary} 
+              style={{ marginLeft: 8 }}
+            />
+          )}
         </View>
 
         {/* Results count */}
-        {journals.length > 0 && (
+        {!showLoader && displayJournals.length > 0 && (
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsText}>
               {search.trim() 
-                ? `${filteredJournals.length} result${filteredJournals.length !== 1 ? 's' : ''} for "${search}"`
+                ? `${displayJournals.length} result${displayJournals.length !== 1 ? 's' : ''} for "${search}"`
                 : `${journals.length} journal entr${journals.length !== 1 ? 'ies' : 'y'}`
               }
             </Text>
           </View>
         )}
 
-        {/* Render Journals */}
-        <FlatList
-          data={filteredJournals}
-          keyExtractor={item => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item }) => (
-            <JournalCard item={item} nav={props} />
-          )}
-          ListEmptyComponent={
-            journals.length === 0 
-              ? renderEmptyState 
-              : (search.trim() ? renderNoResults : null)
-          }
-        />
+        {/* Render Journals or Loading State */}
+        {showLoader ? (
+          renderLoader()
+        ) : (
+          <FlatList
+            data={displayJournals}
+            keyExtractor={item => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            renderItem={({ item }) => (
+              <JournalCard item={item} nav={props} />
+            )}
+            ListEmptyComponent={
+              journals.length === 0 
+                ? renderEmptyState 
+                : (search.trim() ? renderNoResults : null)
+            }
+            onRefresh={refreshJournals}
+            refreshing={isLoading && !isSearching}
+          />
+        )}
       </View>
     </ImageBackground>
   );
@@ -211,5 +279,17 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     lineHeight: 22,
     paddingHorizontal: 40,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loaderText: {
+    fontSize: 16,
+    color: colors.searchBackground,
+    marginTop: 16,
+    fontWeight: '500',
   },
 });

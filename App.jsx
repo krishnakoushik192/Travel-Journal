@@ -3,9 +3,11 @@ import { StatusBar } from 'react-native';
 import StackNavigator from './src/navigation/StackNavigator';
 import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useJournalStore } from './src/store/Store';
 
 
 function App() {
+  const initializeStore = useJournalStore((state) => state.initializeStore);
   useEffect(() => {
     // Configure Google Sign-In when app starts
     GoogleSignin.configure({
@@ -14,6 +16,7 @@ function App() {
       hostedDomain: '',
       forceCodeForRefreshToken: true,
     });
+    initializeStore();
   }, []);
 
   return (
