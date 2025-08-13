@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,14 +17,86 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
 import Header from '../compoenents/Header';
+import Geolocation from 'react-native-geolocation-service';
+
 
 const { width, height } = Dimensions.get('window');
+
 
 const AddEditJournalScreen = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [productImage, setProductImage] = useState([]);
+  const [locationName, setLocationName] = useState('Detecting location...');
+  const [dateTime, setDateTime] = useState('');
+
+  useEffect(() => {
+    detectLocation();
+    updateDateTime();
+  }, []);
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: "Location Permission",
+          message: "This app needs access to your location",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK"
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    return true;
+  };
+  const detectLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      setLocationName('Location permission denied');
+      return;
+    }
+
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            {
+              headers: {
+                "User-Agent": "TravelJournal/1.0 (koushikaraveti24@gmail.com)", // REQUIRED
+                "Accept-Language": "en" // Optional, for English results
+              }
+            }
+          );
+          // console.log('Location Response:', response);
+          const data = await response.json();
+          console.log('Location Data:', data);
+          if (data && data.address) {
+            setLocationName(`${data.address.city_district}, ${data.address.city}, ${data.address.country}`);
+          } else {
+            setLocationName('Location not found');
+          }
+        } catch (error) {
+          console.error(error);
+          setLocationName('Unable to detect location');
+        }
+      },
+      (error) => {
+        console.error(error);
+        setLocationName('Unable to detect location');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  };
+   const updateDateTime = () => {
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString();
+    const formattedTime = now.toLocaleTimeString();
+    setDateTime(`${formattedDate} ${formattedTime}`);
+  };
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'android') {
@@ -193,7 +265,11 @@ const AddEditJournalScreen = () => {
 
         <View style={styles.locationRow}>
           <MaterialCommunityIcons name="map-marker-outline" size={20} color="#fff" />
-          <Text style={styles.locationText}>Location</Text>
+          <Text style={styles.locationText}>{locationName}</Text>
+        </View>
+        <View style={styles.locationRow}>
+          <MaterialCommunityIcons name="calendar-clock" size={20} color="#fff" />
+          <Text style={styles.locationText}>{dateTime}</Text>
         </View>
 
         <TouchableOpacity style={styles.imagePickerButton} onPress={handleImageSelection}>
