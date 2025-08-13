@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useJournalStore } from '../store/Store';
-
 
 // Same color palette as previous screens
 const colors = {
@@ -33,9 +32,10 @@ const colors = {
 };
 
 export default function JournalDetails({ route, navigation }) {
- const {removeJournal} = useJournalStore();
-  // Get journal data from navigation params or use sample data
-  const journal = route?.params?.journal 
+  const { removeJournal } = useJournalStore();
+  
+  // Get journal data from navigation params
+  const journal = route?.params?.journal;
   console.log(journal);
 
   const handleEdit = () => {
@@ -60,9 +60,17 @@ export default function JournalDetails({ route, navigation }) {
     );
   };
 
+  if (!journal) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Journal not found</Text>
+      </View>
+    );
+  }
+
   return (
     <ImageBackground 
-      source={require('../assets/BG.jpg')} // Add your background image here
+      source={require('../assets/BG.jpg')}
       style={styles.background}
     >
       <View style={styles.overlay}>
@@ -89,13 +97,20 @@ export default function JournalDetails({ route, navigation }) {
           {/* Main Card */}
           <View style={styles.mainCard}>
             {/* Image */}
-            <View style={styles.imageContainer}>
-              <Image 
-                source={{ uri: journal.productImage[0].url }} 
-                style={styles.journalImage}
-                resizeMode="cover"
-              />
-            </View>
+            {journal.productImage && journal.productImage.length > 0 ? (
+              <View style={styles.imageContainer}>
+                <Image 
+                  source={{ uri: journal.productImage[0].url }} 
+                  style={styles.journalImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : (
+              <View style={styles.noImageContainer}>
+                <MaterialCommunityIcons name="camera-off" size={40} color={colors.textMuted} />
+                <Text style={styles.noImageText}>No image available</Text>
+              </View>
+            )}
 
             {/* Content */}
             <View style={styles.contentContainer}>
@@ -116,10 +131,12 @@ export default function JournalDetails({ route, navigation }) {
               </View>
 
               {/* Description */}
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionTitle}>Description</Text>
-                <Text style={styles.description}>{journal.description}</Text>
-              </View>
+              {journal.description && (
+                <View style={styles.descriptionContainer}>
+                  <Text style={styles.descriptionTitle}>Description</Text>
+                  <Text style={styles.description}>{journal.description}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -131,10 +148,13 @@ export default function JournalDetails({ route, navigation }) {
                 size={20} 
                 color={colors.white} 
               />
-              <Text style={styles.editButtonText}>Edit Entry</Text>
+              <Text style={styles.editButtonText}>Edit Journal</Text>
             </Pressable>
 
-            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+            <Pressable 
+              style={styles.deleteButton} 
+              onPress={() => handleDelete(journal.id)}
+            >
               <MaterialCommunityIcons 
                 name="delete-outline" 
                 size={20} 
@@ -161,7 +181,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    // justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 50,
@@ -170,22 +189,13 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginRight: 16,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.white,
     letterSpacing: 0.5,
-    marginHorizontal:'auto'
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   scrollView: {
     flex: 1,
@@ -304,5 +314,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  errorText: {
+    fontSize: 18,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  noImageContainer: {
+    width: '100%',
+    height: 220,
+    backgroundColor: colors.searchBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

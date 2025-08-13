@@ -22,9 +22,12 @@ import { useJournalStore } from '../store/Store';
 
 const { width, height } = Dimensions.get('window');
 
+const AddEditJournalScreen = ({ route, navigation }) => {
+  const { addJournal, updateJournal } = useJournalStore();
 
-const AddEditJournalScreen = () => {
-  const { journal, addJournal } = useJournalStore();
+  // Check if we're in edit mode
+  const journalToEdit = route?.params?.journal;
+  const isEditMode = !!journalToEdit;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -34,9 +37,20 @@ const AddEditJournalScreen = () => {
   const [dateTime, setDateTime] = useState('');
 
   useEffect(() => {
-    detectLocation();
-    updateDateTime();
-  }, []);
+    if (isEditMode) {
+      // Pre-fill data if editing
+      setTitle(journalToEdit.title || '');
+      setDescription(journalToEdit.description || '');
+      setProductImage(journalToEdit.productImage || []);
+      setLocationName(journalToEdit.locationName || 'Unknown location');
+      setDateTime(journalToEdit.dateTime || '');
+    } else {
+      // Initialize for new entry
+      detectLocation();
+      updateDateTime();
+    }
+  }, [isEditMode, journalToEdit]);
+
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
@@ -53,6 +67,7 @@ const AddEditJournalScreen = () => {
     }
     return true;
   };
+
   const detectLocation = async () => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
@@ -68,12 +83,11 @@ const AddEditJournalScreen = () => {
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
             {
               headers: {
-                "User-Agent": "TravelJournal/1.0 (koushikaraveti24@gmail.com)", // REQUIRED
-                "Accept-Language": "en" // Optional, for English results
+                "User-Agent": "TravelJournal/1.0 (koushikaraveti24@gmail.com)",
+                "Accept-Language": "en"
               }
             }
           );
-          // console.log('Location Response:', response);
           const data = await response.json();
           console.log('Location Data:', data);
           if (data && data.address) {
@@ -93,6 +107,7 @@ const AddEditJournalScreen = () => {
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
   };
+
   const updateDateTime = () => {
     const now = new Date();
     const formattedDate = now.toLocaleDateString();
@@ -153,6 +168,7 @@ const AddEditJournalScreen = () => {
         url: image.path,
       };
       setProductImage(prev => [...prev, data]);
+      setShowImageOptions(false);
     } catch (error) {
       console.error(error);
     }
@@ -176,6 +192,7 @@ const AddEditJournalScreen = () => {
         url: image.path,
       };
       setProductImage(prev => [...prev, data]);
+      setShowImageOptions(false);
     } catch (error) {
       console.error(error);
     }
@@ -188,31 +205,57 @@ const AddEditJournalScreen = () => {
     }
     setShowImageOptions(true);
   };
+
   const removeImage = (indexToRemove) => {
     setProductImage(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSave = () => {
+    // Validation: Title is required
     if (!title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title for your journal entry.');
       return;
     }
 
-    addJournal({
-      id: Math.random().toString(36).substr(2, 9),
+    // Validation: At least 1 photo is required
+    if (productImage.length === 0) {
+      Alert.alert('Photo Required', 'Please add at least one photo to your journal entry.');
+      return;
+    }
+
+    const journalData = {
       title,
       description,
       productImage,
       locationName,
       dateTime,
-    });
+    };
 
-    // Reset local state after saving
-    setTitle('');
-    setDescription('');
-    setProductImage([]);
-    Alert.alert('Saved', 'Your journal entry has been saved.');
-    console.log(journal);
+    if (isEditMode) {
+      // Update existing journal
+      updateJournal({
+        ...journalData,
+        id: journalToEdit.id, // Keep the same ID
+      });
+      Alert.alert('Updated', 'Your journal entry has been updated.', [
+        {
+          text: 'OK',
+          onPress: () => navigation?.goBack() // Go back to details screen
+        }
+      ]);
+    } else {
+      // Add new journal
+      addJournal({
+        ...journalData,
+        id: Math.random().toString(36).substr(2, 9),
+      });
+
+      // Reset local state after saving
+      setTitle('');
+      setDescription('');
+      setProductImage([]);
+      Alert.alert('Saved', 'Your journal entry has been saved.');
+    }
   };
 
   const AndroidImageOptionsModal = () => (
@@ -254,9 +297,30 @@ const AddEditJournalScreen = () => {
       style={styles.background}
     >
       <View style={styles.overlay} />
-      <Header />
+
+      {/* Header with Back Button for Edit Mode */}
+      {isEditMode ? (
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            onPress={() => navigation?.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color="#fff"
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit Journal</Text>
+        </View>
+      ) : (
+        <Header />
+      )}
+
       <View style={styles.container}>
-        <Text style={styles.header}>Add/Edit Journal</Text>
+        <Text style={styles.header}>
+          {isEditMode ? 'Edit Journal Entry' : 'Add New Journal Entry'}
+        </Text>
 
         <TextInput
           style={styles.input}
@@ -284,12 +348,31 @@ const AddEditJournalScreen = () => {
           <Text style={styles.locationText}>{dateTime}</Text>
         </View>
 
-        <TouchableOpacity style={styles.imagePickerButton} onPress={handleImageSelection}>
-          <MaterialCommunityIcons name="camera-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.imagePickerText}>Add Images ({productImage.length}/5)</Text>
+        <TouchableOpacity
+          style={[
+            styles.imagePickerButton,
+            productImage.length >= 5 && styles.imagePickerButtonDisabled
+          ]}
+          onPress={handleImageSelection}
+          disabled={productImage.length >= 5}
+        >
+          <MaterialCommunityIcons
+            name="camera-plus"
+            size={20}
+            color={productImage.length >= 5 ? "#999" : "#fff"}
+            style={{ marginRight: 8 }}
+          />
+          <Text
+            style={[
+              styles.imagePickerText,
+              productImage.length >= 5 && styles.imagePickerTextDisabled
+            ]}
+          >
+            {productImage.length >= 5 ? 'Maximum 5 photos reached' : `Add Images (${productImage.length}/5)`}
+          </Text>
         </TouchableOpacity>
 
-        {productImage.length > 0 && (
+        {productImage.length > 0 ? (
           <FlatList
             data={productImage}
             keyExtractor={(item, index) => index.toString()}
@@ -308,10 +391,31 @@ const AddEditJournalScreen = () => {
               </View>
             )}
           />
+        ) : (
+          <View style={styles.noImageContainer}>
+            <MaterialCommunityIcons name="camera-off" size={40} color="#999" />
+            <Text style={styles.noImageText}>
+              At least 1 photo is required for your journal entry
+            </Text>
+          </View>
         )}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveText}>Save Journal Entry</Text>
+        <TouchableOpacity
+          style={[
+            styles.saveButton,
+            productImage.length === 0 && styles.saveButtonDisabled
+          ]}
+          onPress={handleSave}
+          disabled={productImage.length === 0}
+        >
+          <Text
+            style={[
+              styles.saveText,
+              productImage.length === 0 && styles.saveTextDisabled
+            ]}
+          >
+            {isEditMode ? 'Update Journal Entry' : 'Save Journal Entry'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -332,6 +436,25 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(45, 80, 22, 0.4)',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingTop: 50,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   container: {
     flex: 1,
@@ -430,6 +553,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 18,
     color: '#fff',
+  },
+  imagePickerButtonDisabled: {
+    backgroundColor: 'rgba(150,150,150,0.25)',
+    borderColor: 'rgba(150,150,150,0.3)',
+  },
+  imagePickerTextDisabled: {
+    color: '#999',
+  },
+  noImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#999',
+  },
+  noImageText: {
+    color: '#ccc',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#888',
+    opacity: 0.6,
+  },
+  saveTextDisabled: {
+    color: '#ccc',
   },
   modalOverlay: {
     flex: 1,
