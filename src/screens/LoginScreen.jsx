@@ -2,10 +2,27 @@ import React from 'react';
 import { Image } from 'react-native';
 import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen(props) {
+  const signInWithGoogle = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      await AsyncStorage.setItem('user', JSON.stringify(userInfo));
+      console.log('User Info:', userInfo);
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled sign in');
+      } else {
+        console.error(error);
+      }
+    }
+  };
+
   return (
     <ImageBackground
       source={require('../assets/BG.jpg')}
@@ -24,13 +41,13 @@ export default function LoginScreen(props) {
         <Text style={styles.subtitle}>Capture your journeys anywhere</Text>
 
         {/* Google Sign-in */}
-        <TouchableOpacity style={styles.googleBtn} onPress={()=>{props.navigation.replace('Tabs')}}>
+        <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle}>
           <MaterialCommunityIcons name="google" size={24} color="#fff" style={styles.icon} />
           <Text style={styles.btnText}>Sign in with Google</Text>
         </TouchableOpacity>
 
-        <Text style={{color:'white', marginBottom:5,size:20}}>or</Text>
-        
+        <Text style={{ color: 'white', marginBottom: 5, size: 20 }}>or</Text>
+
         {/* Apple Sign-in */}
         <TouchableOpacity style={styles.appleBtn}>
           <MaterialCommunityIcons name="apple" size={24} color="#fff" style={styles.icon} />
@@ -49,7 +66,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,

@@ -58,7 +58,7 @@ export default function HomeScreen(props) {
 
   return (
     <ImageBackground
-      source={require('../assets/BG1.jpg')}
+      source={require('../assets/BG.jpg')}
       style={styles.background}
     >
       <View style={styles.overlay}>

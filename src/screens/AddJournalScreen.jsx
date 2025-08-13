@@ -166,7 +166,7 @@ const AddEditJournalScreen = () => {
 
   return (
     <ImageBackground
-      source={require('../assets/JournalBG.jpeg')}
+      source={require('../assets/BG.jpg')}
       style={styles.background}
     >
       <View style={styles.overlay} />
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(45, 80, 22, 0.4)',
   },
   container: {
     flex: 1,
