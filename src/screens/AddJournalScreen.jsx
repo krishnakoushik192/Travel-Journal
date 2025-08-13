@@ -46,7 +46,7 @@ const AddEditJournalScreen = () => {
   const requestGalleryPermission = async () => {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
         {
           title: "Gallery Permission",
           message: "This app needs access to your photos",

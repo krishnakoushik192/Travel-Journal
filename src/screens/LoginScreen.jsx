@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image } from 'react-native';
 import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,6 +20,8 @@ export default function LoginScreen(props) {
       } else {
         console.error(error);
       }
+    }finally{
+      props.navigation.navigate('Tabs');
     }
   };
 

@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Header from '../compoenents/Header';
 
 const { width, height } = Dimensions.get('window');
 
@@ -65,16 +66,6 @@ export default function SearchScreen(props) {
       <View style={styles.overlay}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable 
-            onPress={() => props.navigation?.goBack()}
-            style={styles.backButton}
-          >
-            <MaterialCommunityIcons 
-              name="arrow-left" 
-              size={24} 
-              color={colors.white} 
-            />
-          </Pressable>
           <Text style={styles.headerTitle}>Search & Filter</Text>
           <Pressable onPress={clearFilters} style={styles.clearButton}>
             <Text style={styles.clearText}>Clear</Text>
