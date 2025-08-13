@@ -4,38 +4,16 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   Dimensions,
   TextInput,
-  Pressable,
   ImageBackground,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from '../compoenents/Header';
 import JournalCard from '../compoenents/JournalCard';
+import { useJournalStore } from '../store/Store';
 
 const { width, height } = Dimensions.get('window');
-
-const SAMPLE_ENTRIES = [
-  {
-    id: '1',
-    title: 'Sunrise at Green Hill',
-    date: '2025-08-10',
-    location: 'Hilltop, KY',
-    tags: ['mountain', 'sunrise'],
-    image: require('../assets/BG.jpg'),
-  },
-  {
-    id: '2',
-    title: 'Lazy Beach Afternoon',
-    date: '2025-07-21',
-    location: 'Seaside, CA',
-    tags: ['beach', 'relax'],
-    image: require('../assets/logo.png'),
-  },
-];
-
-const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
 
 // Enhanced Color Palette
 const colors = {
@@ -55,6 +33,47 @@ const colors = {
 
 export default function HomeScreen(props) {
   const [search, setSearch] = useState('');
+  const { journals } = useJournalStore();
+
+  // Filter journals based on search query
+  const filteredJournals = journals.filter(journal => {
+    if (!search.trim()) return true;
+    
+    const searchLower = search.toLowerCase();
+    return (
+      journal.title?.toLowerCase().includes(searchLower) ||
+      journal.description?.toLowerCase().includes(searchLower) ||
+      journal.locationName?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons 
+        name="book-open-page-variant" 
+        size={80} 
+        color={colors.accent} 
+      />
+      <Text style={styles.emptyTitle}>No Journal Entries Yet</Text>
+      <Text style={styles.emptySubtitle}>
+        Start capturing your adventures by adding your first journal entry!
+      </Text>
+    </View>
+  );
+
+  const renderNoResults = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons 
+        name="magnify" 
+        size={80} 
+        color={colors.accent} 
+      />
+      <Text style={styles.emptyTitle}>No Results Found</Text>
+      <Text style={styles.emptySubtitle}>
+        Try searching with different keywords
+      </Text>
+    </View>
+  );
 
   return (
     <ImageBackground
@@ -79,17 +98,42 @@ export default function HomeScreen(props) {
             value={search}
             onChangeText={setSearch}
           />
+          {search.length > 0 && (
+            <MaterialCommunityIcons
+              name="close-circle"
+              size={20}
+              color={colors.textMuted}
+              onPress={() => setSearch('')}
+            />
+          )}
         </View>
+
+        {/* Results count */}
+        {journals.length > 0 && (
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsText}>
+              {search.trim() 
+                ? `${filteredJournals.length} result${filteredJournals.length !== 1 ? 's' : ''} for "${search}"`
+                : `${journals.length} journal entr${journals.length !== 1 ? 'ies' : 'y'}`
+              }
+            </Text>
+          </View>
+        )}
 
         {/* Render Journals */}
         <FlatList
-          data={SAMPLE_ENTRIES}
-          keyExtractor={item => item.id}
+          data={filteredJournals}
+          keyExtractor={item => item.id.toString()}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
             <JournalCard item={item} nav={props} />
           )}
+          ListEmptyComponent={
+            journals.length === 0 
+              ? renderEmptyState 
+              : (search.trim() ? renderNoResults : null)
+          }
         />
       </View>
     </ImageBackground>
@@ -109,6 +153,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: 20,
+    flexGrow: 1,
   },
   searchBar: {
     flexDirection: 'row',
@@ -135,5 +180,36 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '500',
+  },
+  resultsHeader: {
+    marginBottom: 8,
+  },
+  resultsText: {
+    color: colors.searchBackground,
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.searchBackground,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: colors.searchBackground,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 22,
+    paddingHorizontal: 40,
   },
 });

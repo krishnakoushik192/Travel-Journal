@@ -8,6 +8,6 @@ export const useJournalStore = create((set) => ({
     })),
   removeJournal: (id) =>
     set((state) => ({
-      journals: state.journals.filter((journal) => journal.id !== id),
+      journals: state.journals.filter((journal) => journal.id === id),
     })),
 }));

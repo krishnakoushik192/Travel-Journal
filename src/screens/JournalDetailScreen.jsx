@@ -7,13 +7,11 @@ import {
   Image,
   Pressable,
   ImageBackground,
-  Dimensions,
-  Share,
   Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useJournalStore } from '../store/Store';
 
-const { width, height } = Dimensions.get('window');
 
 // Same color palette as previous screens
 const colors = {
@@ -35,16 +33,16 @@ const colors = {
 };
 
 export default function JournalDetails({ route, navigation }) {
-  const [isFavorite, setIsFavorite] = useState(false);
-
+ const {removeJournal} = useJournalStore();
   // Get journal data from navigation params or use sample data
   const journal = route?.params?.journal 
+  console.log(journal);
 
   const handleEdit = () => {
     navigation?.navigate('EditJournal', { journal });
   };
 
-  const handleDelete = () => {
+  const handleDelete = (id) => {
     Alert.alert(
       'Delete Journal Entry',
       'Are you sure you want to delete this journal entry? This action cannot be undone.',
@@ -54,7 +52,7 @@ export default function JournalDetails({ route, navigation }) {
           text: 'Delete', 
           style: 'destructive',
           onPress: () => {
-            // Add delete logic here
+            removeJournal(id);
             navigation?.goBack();
           }
         }
@@ -93,7 +91,7 @@ export default function JournalDetails({ route, navigation }) {
             {/* Image */}
             <View style={styles.imageContainer}>
               <Image 
-                source={journal.image} 
+                source={{ uri: journal.productImage[0].url }} 
                 style={styles.journalImage}
                 resizeMode="cover"
               />
@@ -105,7 +103,7 @@ export default function JournalDetails({ route, navigation }) {
               <Text style={styles.title}>{journal.title}</Text>
 
               {/* Date & Time */}
-              <Text style={styles.dateTime}>{journal.date} • {journal.time}</Text>
+              <Text style={styles.dateTime}>{journal.dateTime}</Text>
 
               {/* Location */}
               <View style={styles.locationContainer}>
@@ -114,7 +112,7 @@ export default function JournalDetails({ route, navigation }) {
                   size={16} 
                   color={colors.textMuted} 
                 />
-                <Text style={styles.location}>{journal.location}</Text>
+                <Text style={styles.location} numberOfLines={3}>{journal.locationName}</Text>
               </View>
 
               {/* Description */}
@@ -242,6 +240,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     gap: 4,
+    paddingHorizontal: 8,
   },
   location: {
     fontSize: 14,

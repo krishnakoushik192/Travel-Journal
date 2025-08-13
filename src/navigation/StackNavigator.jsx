@@ -4,6 +4,7 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import BottomNavigator from './BottomNavigator';
 import JournalDetails from '../screens/JournalDetailScreen';
+import AddEditJournalScreen from '../screens/AddJournalScreen';
 
 const Stack  =  createStackNavigator();
 
@@ -32,6 +33,7 @@ const StackNavigator = () => {
       <Stack.Screen name='Login' component={LoginScreen} />
       <Stack.Screen name='Tabs' component={BottomNavigator} />
       <Stack.Screen name='Details' component={JournalDetails} />
+      <Stack.Screen name='EditJournal' component={AddEditJournalScreen} />
     </Stack.Navigator>
   );
 };

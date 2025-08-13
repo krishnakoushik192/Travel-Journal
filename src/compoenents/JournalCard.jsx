@@ -17,7 +17,37 @@ const colors = {
     overlay: 'rgba(45, 80, 22, 0.4)', // Deep green overlay
 };
 
-const JournalCard = ({nav,item}) => {
+const JournalCard = ({ nav, item }) => {
+    // Get the first image from productImage array or use a default
+    const getDisplayImage = () => {
+        if (item.productImage && item.productImage.length > 0) {
+            return { uri: item.productImage[0].url };
+        }
+    };
+
+    // Create tags from title and description (simple implementation)
+    const generateTags = () => {
+        const tags = [];
+        const text = `${item.title || ''} ${item.description || ''}`.toLowerCase();
+        
+        // Simple tag generation based on keywords
+        if (text.includes('mountain') || text.includes('hill')) tags.push('mountain');
+        if (text.includes('beach') || text.includes('ocean') || text.includes('sea')) tags.push('beach');
+        if (text.includes('food') || text.includes('restaurant') || text.includes('eat')) tags.push('food');
+        if (text.includes('sunset') || text.includes('sunrise')) tags.push('sunset');
+        if (text.includes('city') || text.includes('urban')) tags.push('city');
+        if (text.includes('nature') || text.includes('forest') || text.includes('park')) tags.push('nature');
+        if (text.includes('adventure') || text.includes('explore')) tags.push('adventure');
+        if (text.includes('culture') || text.includes('museum') || text.includes('art')) tags.push('culture');
+        
+        // If no tags generated, add a default based on location or just 'travel'
+        if (tags.length === 0) {
+            tags.push('travel');
+        }
+        
+        return tags.slice(0, 3); // Limit to 3 tags
+    };
+
     return (
         <Pressable
             onPress={() => nav.navigation.navigate('Details', { journal: item })}
@@ -29,14 +59,16 @@ const JournalCard = ({nav,item}) => {
             <View style={styles.cardInner}>
                 <View style={styles.imageContainer}>
                     <Image
-                        source={item.image}
+                        source={getDisplayImage()}
                         style={styles.cardImage}
                         resizeMode="cover"
                     />
                     <View style={styles.imageOverlay} />
                 </View>
                 <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardTitle} numberOfLines={2}>
+                        {item.title || 'Untitled Entry'}
+                    </Text>
                     <View style={styles.cardMeta}>
                         <View style={styles.metaRow}>
                             <MaterialCommunityIcons
@@ -44,7 +76,9 @@ const JournalCard = ({nav,item}) => {
                                 size={14}
                                 color={colors.textMuted}
                             />
-                            <Text style={styles.cardDate}>{item.date}</Text>
+                            <Text style={styles.cardDate}>
+                                {(item.dateTime)}
+                            </Text>
                         </View>
                         <View style={styles.metaRow}>
                             <MaterialCommunityIcons
@@ -52,15 +86,34 @@ const JournalCard = ({nav,item}) => {
                                 size={14}
                                 color={colors.textMuted}
                             />
-                            <Text style={styles.cardLocation}>{item.location}</Text>
+                            <Text style={styles.cardLocation} numberOfLines={1}>
+                                {item.locationName || 'Unknown location'}
+                            </Text>
                         </View>
                     </View>
+                    {item.description && (
+                        <Text style={styles.cardDescription} numberOfLines={5}>
+                            {item.description}
+                        </Text>
+                    )}
                     <View style={styles.cardTags}>
-                        {item.tags.map(tag => (
-                            <View key={tag} style={styles.tagContainer}>
+                        {generateTags().map((tag, index) => (
+                            <View key={`${tag}-${index}`} style={styles.tagContainer}>
                                 <Text style={styles.cardTag}>#{tag}</Text>
                             </View>
                         ))}
+                        {item.productImage && item.productImage.length > 0 && (
+                            <View style={styles.imageCountTag}>
+                                <MaterialCommunityIcons
+                                    name="camera"
+                                    size={12}
+                                    color={colors.secondary}
+                                />
+                                <Text style={styles.imageCountText}>
+                                    {item.productImage.length}
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </View>
             </View>
@@ -99,6 +152,7 @@ const styles = StyleSheet.create({
     cardImage: {
         width: '100%',
         height: 220,
+        backgroundColor: colors.searchBackground, // Fallback color
     },
     imageOverlay: {
         ...StyleSheet.absoluteFillObject,
@@ -133,11 +187,19 @@ const styles = StyleSheet.create({
         color: colors.textMuted,
         marginLeft: 6,
         fontWeight: '500',
+        flex: 1,
+    },
+    cardDescription: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        lineHeight: 20,
+        marginBottom: 12,
     },
     cardTags: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
+        alignItems: 'center',
     },
     tagContainer: {
         backgroundColor: colors.tagBackground,
@@ -161,6 +223,22 @@ const styles = StyleSheet.create({
         color: colors.secondary,
         letterSpacing: 0.5,
     },
-})
+    imageCountTag: {
+        backgroundColor: colors.tagBackground,
+        borderRadius: 15,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderWidth: 1,
+        borderColor: colors.secondary,
+    },
+    imageCountText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: colors.secondary,
+    },
+});
 
 export default JournalCard;
