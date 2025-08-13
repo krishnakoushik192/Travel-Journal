@@ -59,6 +59,16 @@ class DatabaseService {
         );
       `);
 
+      // Create tags table
+      await this.db.executeSql(`
+        CREATE TABLE IF NOT EXISTS journal_tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          journal_id TEXT NOT NULL,
+          tag TEXT NOT NULL,
+          FOREIGN KEY (journal_id) REFERENCES journals (id) ON DELETE CASCADE
+        );
+      `);
+
       console.log('Tables created successfully');
     } catch (error) {
       console.error('Error creating tables: ', error);
@@ -77,6 +87,44 @@ class DatabaseService {
         console.error('Error closing database: ', error);
       }
     }
+  }
+
+  // Generate tags from journal content
+  generateTags(title, description) {
+    const tags = [];
+    const text = `${title || ''} ${description || ''}`.toLowerCase();
+    
+    // Simple tag generation based on keywords
+    const tagMap = {
+      mountain: ['mountain', 'hill', 'peak', 'summit', 'hiking', 'trekking'],
+      beach: ['beach', 'ocean', 'sea', 'coast', 'shore', 'sand'],
+      food: ['food', 'restaurant', 'eat', 'meal', 'dinner', 'lunch', 'breakfast', 'cafe'],
+      sunset: ['sunset', 'sunrise', 'dawn', 'dusk'],
+      city: ['city', 'urban', 'downtown', 'metropolitan'],
+      nature: ['nature', 'forest', 'park', 'wildlife', 'trees', 'garden'],
+      adventure: ['adventure', 'explore', 'journey', 'trip', 'travel'],
+      culture: ['culture', 'museum', 'art', 'history', 'heritage', 'monument'],
+      family: ['family', 'kids', 'children', 'parents'],
+      friends: ['friends', 'buddy', 'group'],
+      relaxation: ['relax', 'spa', 'peaceful', 'calm', 'quiet'],
+      festival: ['festival', 'celebration', 'event', 'party'],
+      architecture: ['building', 'architecture', 'church', 'temple', 'palace'],
+      shopping: ['shopping', 'market', 'store', 'bazaar'],
+      sports: ['sports', 'game', 'football', 'basketball', 'swimming']
+    };
+
+    for (const [tag, keywords] of Object.entries(tagMap)) {
+      if (keywords.some(keyword => text.includes(keyword))) {
+        tags.push(tag);
+      }
+    }
+    
+    // If no tags generated, add a default based on content or just 'travel'
+    if (tags.length === 0) {
+      tags.push('travel');
+    }
+    
+    return [...new Set(tags)]; // Remove duplicates
   }
 
   // CRUD Operations for Journals
@@ -106,6 +154,15 @@ class DatabaseService {
             [id, image.url, i]
           );
         }
+      }
+
+      // Generate and insert tags
+      const tags = this.generateTags(title, description);
+      for (const tag of tags) {
+        await this.db.executeSql(
+          `INSERT INTO journal_tags (journal_id, tag) VALUES (?, ?)`,
+          [id, tag]
+        );
       }
 
       console.log('Journal added successfully');
@@ -178,11 +235,9 @@ class DatabaseService {
         [title, description || '', locationName || '', dateTime || '', id]
       );
 
-      // Delete existing images
-      await this.db.executeSql(
-        'DELETE FROM journal_images WHERE journal_id = ?',
-        [id]
-      );
+      // Delete existing images and tags
+      await this.db.executeSql('DELETE FROM journal_images WHERE journal_id = ?', [id]);
+      await this.db.executeSql('DELETE FROM journal_tags WHERE journal_id = ?', [id]);
 
       // Insert new images
       if (productImage && productImage.length > 0) {
@@ -193,6 +248,15 @@ class DatabaseService {
             [id, image.url, i]
           );
         }
+      }
+
+      // Generate and insert new tags
+      const tags = this.generateTags(title, description);
+      for (const tag of tags) {
+        await this.db.executeSql(
+          `INSERT INTO journal_tags (journal_id, tag) VALUES (?, ?)`,
+          [id, tag]
+        );
       }
 
       console.log('Journal updated successfully');
@@ -210,7 +274,7 @@ class DatabaseService {
         await this.initDB();
       }
 
-      // Delete journal (images will be deleted automatically due to CASCADE)
+      // Delete journal (images and tags will be deleted automatically due to CASCADE)
       await this.db.executeSql('DELETE FROM journals WHERE id = ?', [id]);
 
       console.log('Journal deleted successfully');
@@ -221,23 +285,63 @@ class DatabaseService {
     }
   }
 
-  // Search journals
-  async searchJournals(searchTerm) {
+  // Advanced search with multiple filters
+  async advancedSearch(filters) {
     try {
       if (!this.db) {
         await this.initDB();
       }
 
-      const searchPattern = `%${searchTerm.toLowerCase()}%`;
+      const { keyword, tags, startDate, endDate, locationRadius } = filters;
       
-      const [journalResults] = await this.db.executeSql(
-        `SELECT * FROM journals 
-         WHERE LOWER(title) LIKE ? 
-         OR LOWER(description) LIKE ? 
-         OR LOWER(locationName) LIKE ?
-         ORDER BY createdAt DESC`,
-        [searchPattern, searchPattern, searchPattern]
-      );
+      let query = `
+        SELECT DISTINCT j.* FROM journals j
+        LEFT JOIN journal_tags jt ON j.id = jt.journal_id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      // Keyword search
+      if (keyword && keyword.trim()) {
+        const searchPattern = `%${keyword.toLowerCase()}%`;
+        query += ` AND (
+          LOWER(j.title) LIKE ? 
+          OR LOWER(j.description) LIKE ? 
+          OR LOWER(j.locationName) LIKE ?
+        )`;
+        params.push(searchPattern, searchPattern, searchPattern);
+      }
+
+      // Tags filter
+      if (tags && tags.length > 0) {
+        const tagPlaceholders = tags.map(() => '?').join(',');
+        query += ` AND jt.tag IN (${tagPlaceholders})`;
+        params.push(...tags);
+      }
+
+      // Date range filter
+      if (startDate) {
+        query += ` AND date(j.dateTime) >= date(?)`;
+        params.push(startDate);
+      }
+
+      if (endDate) {
+        query += ` AND date(j.dateTime) <= date(?)`;
+        params.push(endDate);
+      }
+
+      // Location radius filter (simplified - just location name contains)
+      if (locationRadius && locationRadius.trim()) {
+        query += ` AND LOWER(j.locationName) LIKE ?`;
+        params.push(`%${locationRadius.toLowerCase()}%`);
+      }
+
+      query += ` ORDER BY j.createdAt DESC`;
+
+      console.log('Search query:', query);
+      console.log('Search params:', params);
+
+      const [journalResults] = await this.db.executeSql(query, params);
 
       const journals = [];
       
@@ -267,8 +371,91 @@ class DatabaseService {
 
       return journals;
     } catch (error) {
-      console.error('Error searching journals: ', error);
+      console.error('Error in advanced search: ', error);
       throw error;
+    }
+  }
+
+  // Simple search (for backward compatibility)
+  async searchJournals(searchTerm) {
+    return this.advancedSearch({ keyword: searchTerm });
+  }
+
+  // Get all unique tags
+  async getAllTags() {
+    try {
+      if (!this.db) {
+        await this.initDB();
+      }
+
+      const [results] = await this.db.executeSql(
+        'SELECT DISTINCT tag FROM journal_tags ORDER BY tag'
+      );
+
+      const tags = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        tags.push(results.rows.item(i).tag);
+      }
+
+      return tags;
+    } catch (error) {
+      console.error('Error getting tags: ', error);
+      return [];
+    }
+  }
+
+  // Get all unique locations
+  async getAllLocations() {
+    try {
+      if (!this.db) {
+        await this.initDB();
+      }
+
+      const [results] = await this.db.executeSql(
+        `SELECT DISTINCT locationName FROM journals 
+         WHERE locationName IS NOT NULL AND locationName != "" 
+         ORDER BY locationName`
+      );
+
+      const locations = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        locations.push(results.rows.item(i).locationName);
+      }
+
+      return locations;
+    } catch (error) {
+      console.error('Error getting locations: ', error);
+      return [];
+    }
+  }
+
+  // Get date range of journals
+  async getDateRange() {
+    try {
+      if (!this.db) {
+        await this.initDB();
+      }
+
+      const [results] = await this.db.executeSql(
+        `SELECT 
+          MIN(date(dateTime)) as minDate, 
+          MAX(date(dateTime)) as maxDate 
+         FROM journals 
+         WHERE dateTime IS NOT NULL AND dateTime != ""`
+      );
+
+      if (results.rows.length > 0) {
+        const row = results.rows.item(0);
+        return {
+          minDate: row.minDate,
+          maxDate: row.maxDate
+        };
+      }
+
+      return { minDate: null, maxDate: null };
+    } catch (error) {
+      console.error('Error getting date range: ', error);
+      return { minDate: null, maxDate: null };
     }
   }
 
@@ -291,10 +478,15 @@ class DatabaseService {
         'SELECT COUNT(DISTINCT locationName) as uniqueLocations FROM journals WHERE locationName IS NOT NULL AND locationName != ""'
       );
 
+      const [tagCountResult] = await this.db.executeSql(
+        'SELECT COUNT(DISTINCT tag) as uniqueTags FROM journal_tags'
+      );
+
       return {
         totalJournals: countResult.rows.item(0).totalJournals,
         totalImages: imageCountResult.rows.item(0).totalImages,
-        uniqueLocations: locationCountResult.rows.item(0).uniqueLocations
+        uniqueLocations: locationCountResult.rows.item(0).uniqueLocations,
+        uniqueTags: tagCountResult.rows.item(0).uniqueTags
       };
     } catch (error) {
       console.error('Error getting stats: ', error);

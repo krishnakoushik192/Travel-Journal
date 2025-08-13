@@ -83,7 +83,7 @@ export const useJournalStore = create((set, get) => ({
     }
   },
 
-  // Search journals
+  // Simple search journals
   searchJournals: async (searchTerm) => {
     if (!searchTerm.trim()) {
       // If search term is empty, return all journals
@@ -102,6 +102,50 @@ export const useJournalStore = create((set, get) => ({
     }
   },
 
+  // Advanced search with multiple filters
+  advancedSearchJournals: async (filters) => {
+    set({ isLoading: true, error: null });
+    try {
+      const results = await DatabaseService.advancedSearch(filters);
+      set({ isLoading: false });
+      return results;
+    } catch (error) {
+      console.error('Error in advanced search:', error);
+      set({ error: error.message, isLoading: false });
+      return [];
+    }
+  },
+
+  // Get all available tags
+  getAllTags: async () => {
+    try {
+      return await DatabaseService.getAllTags();
+    } catch (error) {
+      console.error('Error getting tags:', error);
+      return [];
+    }
+  },
+
+  // Get all available locations
+  getAllLocations: async () => {
+    try {
+      return await DatabaseService.getAllLocations();
+    } catch (error) {
+      console.error('Error getting locations:', error);
+      return [];
+    }
+  },
+
+  // Get date range of journals
+  getDateRange: async () => {
+    try {
+      return await DatabaseService.getDateRange();
+    } catch (error) {
+      console.error('Error getting date range:', error);
+      return { minDate: null, maxDate: null };
+    }
+  },
+
   // Get journal statistics
   getStats: async () => {
     try {
@@ -111,7 +155,8 @@ export const useJournalStore = create((set, get) => ({
       return {
         totalJournals: 0,
         totalImages: 0,
-        uniqueLocations: 0
+        uniqueLocations: 0,
+        uniqueTags: 0
       };
     }
   },
