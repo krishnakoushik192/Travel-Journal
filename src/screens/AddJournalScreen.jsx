@@ -18,12 +18,14 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import ImagePicker from 'react-native-image-crop-picker';
 import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
-
+import { useJournalStore } from '../store/Store';
 
 const { width, height } = Dimensions.get('window');
 
 
 const AddEditJournalScreen = () => {
+  const { journal, addJournal } = useJournalStore();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [showImageOptions, setShowImageOptions] = useState(false);
@@ -91,7 +93,7 @@ const AddEditJournalScreen = () => {
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
   };
-   const updateDateTime = () => {
+  const updateDateTime = () => {
     const now = new Date();
     const formattedDate = now.toLocaleDateString();
     const formattedTime = now.toLocaleTimeString();
@@ -196,11 +198,21 @@ const AddEditJournalScreen = () => {
       return;
     }
 
-    console.log({ title, description, productImage });
+    addJournal({
+      id: Math.random().toString(36).substr(2, 9),
+      title,
+      description,
+      productImage,
+      locationName,
+      dateTime,
+    });
+
+    // Reset local state after saving
     setTitle('');
     setDescription('');
     setProductImage([]);
-    Alert.alert('Saved', `Your journal entry "${title}" has been saved with ${productImage.length} images.`);
+    Alert.alert('Saved', 'Your journal entry has been saved.');
+    console.log(journal);
   };
 
   const AndroidImageOptionsModal = () => (
