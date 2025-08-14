@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import 'react-native-url-polyfill/auto';
 import { StatusBar } from 'react-native';
 import StackNavigator from './src/navigation/StackNavigator';
 import { useEffect, useState } from 'react';

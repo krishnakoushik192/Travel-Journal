@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,12 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { supabase } from '../services/supabaseClient';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,15 +38,35 @@ const colors = {
 };
 
 export default function Accounts(props) {
+  const navigation = useNavigation();
+  const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [userInfo, setUserInfo] = useState({
-    name: 'Alex Thompson',
-    email: 'alex.thompson@example.com',
-    bio: 'Adventure seeker and travel enthusiast. Capturing moments from around the world 🌍',
-    location: 'San Francisco, CA',
-    joinDate: 'January 2023',
+    full_name: '',
+    email: '',
+    bio: '',
+    avatar_url: '',
   });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const jsonValue = await AsyncStorage.getItem('user');
+        if (jsonValue != null) {
+          const data = JSON.parse(jsonValue);
+          setUserInfo(data);
+          setTempUserInfo(data);
+        }
+      } catch (e) {
+        console.error('Error reading user data:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const [tempUserInfo, setTempUserInfo] = useState(userInfo);
 
@@ -63,170 +87,186 @@ export default function Accounts(props) {
     setEditMode(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutModal(false);
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error logging out:', error.message);
+        return;
+      }
+
+      // Remove any stored session from AsyncStorage
+      await AsyncStorage.removeItem('user');
+
+      console.log('✅ Logged out successfully');
+
+      // Navigate back to Login screen
+      navigation.replace('Login');
+    } catch (err) {
+      console.error('Logout error:', err.message);
+    }
     // Add logout logic here
     console.log('User logged out');
   };
 
 
   return (
-    <ImageBackground 
-      source={require('../assets/BG.jpg')} // Add your background image here
+    <ImageBackground
+      source={require('../assets/BG.jpg')}
       style={styles.background}
     >
       <View style={styles.overlay}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <Pressable 
-            onPress={() => editMode ? handleSave() : setEditMode(true)}
-            style={styles.editButton}
-          >
-            <MaterialCommunityIcons 
-              name={editMode ? "check" : "pencil"} 
-              size={20} 
-              color={colors.white} 
-            />
-            <Text style={styles.editButtonText}>
-              {editMode ? 'Save' : 'Edit'}
-            </Text>
-          </Pressable>
-        </View>
-
-        <ScrollView 
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Profile Info */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <Image 
-                // source={require('../assets/avatar.jpg')} // Add default avatar
-                style={styles.avatar}
-                // defaultSource={require('../assets/default-avatar.png')}
-              />
-              <Pressable style={styles.avatarEditButton}>
-                <MaterialCommunityIcons 
-                  name="camera" 
-                  size={16} 
-                  color={colors.white} 
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.white} />
+          </View>
+        ) : (
+          <>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Profile</Text>
+              <Pressable
+                onPress={() => editMode ? handleSave() : setEditMode(true)}
+                style={styles.editButton}
+              >
+                <MaterialCommunityIcons
+                  name={editMode ? "check" : "pencil"}
+                  size={20}
+                  color={colors.white}
                 />
+                <Text style={styles.editButtonText}>
+                  {editMode ? 'Save' : 'Edit'}
+                </Text>
               </Pressable>
             </View>
 
-            <View style={styles.profileInfo}>
-              {editMode ? (
-                <>
-                  <TextInput
-                    style={styles.nameInput}
-                    value={tempUserInfo.name}
-                    onChangeText={(text) => setTempUserInfo({...tempUserInfo, name: text})}
-                    placeholder="Enter your name"
-                    placeholderTextColor={colors.textMuted}
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Profile Info */}
+              <View style={styles.profileSection}>
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={{ uri: userInfo.avatar_url || '../assets/default-avatar.png' }} // Add default avatar
+                    style={styles.avatar}
                   />
-                  <TextInput
-                    style={styles.emailInput}
-                    value={tempUserInfo.email}
-                    onChangeText={(text) => setTempUserInfo({...tempUserInfo, email: text})}
-                    placeholder="Enter your email"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="email-address"
-                  />
-                  <TextInput
-                    style={styles.bioInput}
-                    value={tempUserInfo.bio}
-                    onChangeText={(text) => setTempUserInfo({...tempUserInfo, bio: text})}
-                    placeholder="Tell us about yourself"
-                    placeholderTextColor={colors.textMuted}
-                    multiline
-                    numberOfLines={3}
-                  />
-                  <TextInput
-                    style={styles.locationInput}
-                    value={tempUserInfo.location}
-                    onChangeText={(text) => setTempUserInfo({...tempUserInfo, location: text})}
-                    placeholder="Your location"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                </>
-              ) : (
-                <>
-                  <Text style={styles.profileName}>{userInfo.name}</Text>
-                  <Text style={styles.profileEmail}>{userInfo.email}</Text>
-                  <Text style={styles.profileBio}>{userInfo.bio}</Text>
-                  <View style={styles.locationContainer}>
-                    <MaterialCommunityIcons 
-                      name="map-marker" 
-                      size={16} 
-                      color={colors.accent} 
+                  <Pressable style={styles.avatarEditButton}>
+                    <MaterialCommunityIcons
+                      name="camera"
+                      size={16}
+                      color={colors.white}
                     />
-                    <Text style={styles.profileLocation}>{userInfo.location}</Text>
-                  </View>
-                  <Text style={styles.joinDate}>Member since {userInfo.joinDate}</Text>
-                </>
-              )}
-            </View>
-          </View>
+                  </Pressable>
+                </View>
 
-          {/* Logout Button */}
-          <Pressable 
-            style={styles.logoutButton}
-            onPress={() => setShowLogoutModal(true)}
-          >
-            <MaterialCommunityIcons 
-              name="logout" 
-              size={20} 
-              color={colors.danger} 
-            />
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-
-          {/* Cancel Button (Edit Mode) */}
-          {editMode && (
-            <Pressable style={styles.cancelButton} onPress={handleCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
-          )}
-        </ScrollView>
-
-        {/* Logout Confirmation Modal */}
-        <Modal
-          visible={showLogoutModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowLogoutModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <MaterialCommunityIcons 
-                name="logout-variant" 
-                size={48} 
-                color={colors.danger} 
-                style={styles.modalIcon}
-              />
-              <Text style={styles.modalTitle}>Logout</Text>
-              <Text style={styles.modalMessage}>
-                Are you sure you want to logout from your account?
-              </Text>
-              <View style={styles.modalButtons}>
-                <Pressable 
-                  style={styles.modalCancelButton}
-                  onPress={() => setShowLogoutModal(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable 
-                  style={styles.modalConfirmButton}
-                  onPress={handleLogout}
-                >
-                  <Text style={styles.modalConfirmText}>Logout</Text>
-                </Pressable>
+                <View style={styles.profileInfo}>
+                  {editMode ? (
+                    <>
+                      <TextInput
+                        style={styles.nameInput}
+                        value={tempUserInfo.name}
+                        onChangeText={(text) => setTempUserInfo({ ...tempUserInfo, name: text })}
+                        placeholder="Enter your name"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                      <TextInput
+                        style={styles.emailInput}
+                        value={tempUserInfo.email}
+                        onChangeText={(text) => setTempUserInfo({ ...tempUserInfo, email: text })}
+                        placeholder="Enter your email"
+                        placeholderTextColor={colors.textMuted}
+                        keyboardType="email-address"
+                      />
+                      <TextInput
+                        style={styles.bioInput}
+                        value={tempUserInfo.bio}
+                        onChangeText={(text) => setTempUserInfo({...tempUserInfo, bio: text})}
+                        placeholder="Tell us about yourself"
+                        placeholderTextColor={colors.textMuted}
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <TextInput
+                        style={styles.locationInput}
+                        value={tempUserInfo.location}
+                        onChangeText={(text) => setTempUserInfo({ ...tempUserInfo, location: text })}
+                        placeholder="Your location"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.profileName}>{userInfo.full_name}</Text>
+                      <Text style={styles.profileEmail}>{userInfo.email}</Text>
+                      <Text style={styles.profileBio}>{userInfo.bio || 'No bio available'}</Text>
+                    </>
+                  )}
+                </View>
               </View>
-            </View>
-          </View>
-        </Modal>
+
+              {/* Logout Button */}
+              <Pressable
+                style={styles.logoutButton}
+                onPress={() => setShowLogoutModal(true)}
+              >
+                <MaterialCommunityIcons
+                  name="logout"
+                  size={20}
+                  color={colors.danger}
+                />
+                <Text style={styles.logoutText}>Logout</Text>
+              </Pressable>
+
+              {/* Cancel Button (Edit Mode) */}
+              {editMode && (
+                <Pressable style={styles.cancelButton} onPress={handleCancel}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              )}
+            </ScrollView>
+
+            {/* Logout Confirmation Modal */}
+            <Modal
+              visible={showLogoutModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowLogoutModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <MaterialCommunityIcons
+                    name="logout-variant"
+                    size={48}
+                    color={colors.danger}
+                    style={styles.modalIcon}
+                  />
+                  <Text style={styles.modalTitle}>Logout</Text>
+                  <Text style={styles.modalMessage}>
+                    Are you sure you want to logout from your account?
+                  </Text>
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={styles.modalCancelButton}
+                      onPress={() => setShowLogoutModal(false)}
+                    >
+                      <Text style={styles.modalCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.modalConfirmButton}
+                      onPress={handleLogout}
+                    >
+                      <Text style={styles.modalConfirmText}>Logout</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          </>
+        )}
       </View>
     </ImageBackground>
   );
@@ -550,5 +590,10 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     color: colors.white,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
