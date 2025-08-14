@@ -64,7 +64,27 @@ export default function LoginScreen({ navigation }) {
 
       const user = data.session?.user;
       console.log('✅ Signed in:', user?.user_metadata);
-      await AsyncStorage.setItem('user', JSON.stringify(user?.user_metadata));
+     const  metadata = user?.user_metadata || {};
+      await AsyncStorage.setItem('user', JSON.stringify(metadata));
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([
+          {
+            auth_id: user.id,
+            full_name: metadata.full_name || metadata.name || '',
+            username: metadata.preferred_username || metadata.name || '',
+            email: metadata.email || '',
+            avatar_url: metadata.avatar_url || metadata.picture || '',
+            bio: '' // default empty bio
+          }
+        ])
+        .select();
+
+      if (insertError) {
+        console.error('Error saving to Supabase users table:', insertError);
+      } else {
+        console.log('User data saved to users table ✅');
+      }
 
       navigation.replace('Tabs');
     } catch (err) {
