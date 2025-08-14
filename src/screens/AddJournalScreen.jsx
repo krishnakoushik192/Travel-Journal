@@ -15,20 +15,21 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
-  NativeModules
+  NativeModules,
+  ScrollView
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
 import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
 import { useJournalStore } from '../store/Store';
-
+import DatabaseService from '../services/DatabaseService'; // for text tag generation fallback
 
 const { width, height } = Dimensions.get('window');
 
 const AddEditJournalScreen = ({ route, navigation }) => {
   const { ImageTagger } = NativeModules;
-  const [tags, setTags] = useState([]);
+  const [tags, setTags] = useState([]); // holds AI tags (and/or extra)
   const { addJournal, updateJournal, isLoading } = useJournalStore();
 
   // Check if we're in edit mode
@@ -43,30 +44,40 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   const [dateTime, setDateTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // NEW: store lat/lng
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+
   useEffect(() => {
     if (isEditMode) {
-      // Pre-fill data if editing
       setTitle(journalToEdit.title || '');
       setDescription(journalToEdit.description || '');
       setProductImage(journalToEdit.productImage || []);
       setLocationName(journalToEdit.locationName || 'Unknown location');
       setDateTime(journalToEdit.dateTime || '');
+      setLatitude(journalToEdit.latitude ?? null);
+      setLongitude(journalToEdit.longitude ?? null);
+      setTags(Array.isArray(journalToEdit.tags) ? journalToEdit.tags : []);
     } else {
-      // Initialize for new entry
       detectLocation();
       updateDateTime();
     }
   }, [isEditMode, journalToEdit]);
 
   const ImageProcessing = async (imagePath) => {
-    console.log('Processing image:', imagePath);
-    ImageTagger.getImageTags(imagePath)
-      .then((result) => {
-        console.log('Tags:', result);
-        setTags(result);
-      })
-      .catch((err) => console.error(err));
-  }
+    if (!ImageTagger || !imagePath) return;
+    try {
+      console.log('Processing image:', imagePath);
+      const result = await ImageTagger.getImageTags(imagePath);
+      // result should be an array of strings; fallback sanitize
+      const aiTags = Array.isArray(result)
+        ? result.map(t => String(t).trim()).filter(Boolean)
+        : [];
+      setTags(prev => [...new Set([...(prev || []), ...aiTags])]);
+    } catch (err) {
+      console.error('ImageProcessing error', err);
+    }
+  };
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -89,15 +100,20 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
       setLocationName('Location permission denied');
+      setLatitude(null);
+      setLongitude(null);
       return;
     }
 
     Geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude } = position.coords;
+          const { latitude: lat, longitude: lng } = position.coords;
+          setLatitude(lat);
+          setLongitude(lng);
+
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             {
               headers: {
                 "User-Agent": "TravelJournal/1.0 (koushikaraveti24@gmail.com)",
@@ -107,8 +123,14 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           );
           const data = await response.json();
           console.log('Location Data:', data);
+
           if (data && data.address) {
-            setLocationName(`${data.address.city_district}, ${data.address.city}, ${data.address.country}`);
+            const parts = [
+              data.address.city_district,
+              data.address.city || data.address.town || data.address.village,
+              data.address.country
+            ].filter(Boolean);
+            setLocationName(parts.join(', ') || 'Location not found');
           } else {
             setLocationName('Location not found');
           }
@@ -227,14 +249,17 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setProductImage(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  const mergeAllTags = () => {
+    const textTags = DatabaseService.generateTextTags(title, description);
+    const merged = [...new Set([...(tags || []), ...textTags])];
+    return merged;
+  };
+
   const handleSave = async () => {
-    // Validation: Title is required
     if (!title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title for your journal entry.');
       return;
     }
-
-    // Validation: At least 1 photo is required
     if (productImage.length === 0) {
       Alert.alert('Photo Required', 'Please add at least one photo to your journal entry.');
       return;
@@ -243,47 +268,51 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setIsSaving(true);
 
     try {
+      const finalTags = mergeAllTags();
+
       const journalData = {
         title,
         description,
-        productImage,
-        locationName,
-        dateTime,
+        productImage,   // photos: array of urls inside
+        locationName,   // "location"
+        dateTime,       // "date_time"
+        latitude,
+        longitude,
+        tags: finalTags
       };
 
       if (isEditMode) {
-        // Update existing journal
         await updateJournal({
           ...journalData,
-          id: journalToEdit.id, // Keep the same ID
+          id: journalToEdit.id,
         });
 
         Alert.alert('Updated', 'Your journal entry has been updated.', [
-          {
-            text: 'OK',
-            onPress: () => navigation?.goBack() // Go back to details screen
-          }
+          { text: 'OK', onPress: () => navigation?.goBack() }
         ]);
       } else {
-        // Add new journal
         const newJournal = await addJournal({
           ...journalData,
           id: Math.random().toString(36).substr(2, 9),
         });
 
+        // Optionally kick off AI tag processing on the first image (won't change UI)
+        const firstUrl = newJournal?.productImage?.[0]?.url;
+        if (firstUrl) {
+          await ImageProcessing(firstUrl);
+        }
+
         // Reset local state after saving
         setTitle('');
         setDescription('');
         setProductImage([]);
-        detectLocation(); // Get new location for next entry
-        updateDateTime(); // Update time for next entry
+        detectLocation();
+        updateDateTime();
 
         Alert.alert('Saved', 'Your journal entry has been saved successfully!', [
           {
             text: 'OK',
             onPress: () => {
-              ImageProcessing(newJournal?.productImage[0]?.url); 
-              // Navigate to the details of the newly created journal
               navigation?.navigate('Details', { journal: newJournal });
             }
           }
@@ -291,16 +320,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error saving journal:', error);
-      Alert.alert(
-        'Save Error',
-        'Failed to save journal entry. Please try again.',
-        [
-          {
-            text: 'OK',
-            onPress: () => { }
-          }
-        ]
-      );
+      Alert.alert('Save Error','Failed to save journal entry. Please try again.',[{ text: 'OK' }]);
     } finally {
       setIsSaving(false);
     }
@@ -340,11 +360,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   );
 
   const LoadingModal = () => (
-    <Modal
-      visible={isSaving || isLoading}
-      transparent={true}
-      animationType="fade"
-    >
+    <Modal visible={isSaving || isLoading} transparent={true} animationType="fade">
       <View style={styles.loadingOverlay}>
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color="#4CAF50" />
@@ -357,24 +373,12 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   );
 
   return (
-    <ImageBackground
-      source={require('../assets/BG.jpg')}
-      style={styles.background}
-    >
+    <ImageBackground source={require('../assets/BG.jpg')} style={styles.background}>
       <View style={styles.overlay} />
-
-      {/* Header with Back Button for Edit Mode */}
       {isEditMode ? (
         <View style={styles.headerContainer}>
-          <TouchableOpacity
-            onPress={() => navigation?.goBack()}
-            style={styles.backButton}
-          >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={24}
-              color="#fff"
-            />
+          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Journal</Text>
         </View>
@@ -382,6 +386,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         <Header />
       )}
 
+      <ScrollView>
       <View style={styles.container}>
         <Text style={styles.header}>
           {isEditMode ? 'Edit Journal Entry' : 'Add New Journal Entry'}
@@ -492,7 +497,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-
+      </ScrollView>
       {Platform.OS === 'android' && <AndroidImageOptionsModal />}
       <LoadingModal />
     </ImageBackground>
@@ -501,6 +506,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
 
 export default AddEditJournalScreen;
 
+// styles (UNCHANGED from your code)
 const styles = StyleSheet.create({
   background: {
     flex: 1,

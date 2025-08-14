@@ -26,10 +26,35 @@ class DatabaseService {
       );
       console.log('Database opened successfully');
       await this.createTables();
+      await this.runMigrations();
       return this.db;
     } catch (error) {
       console.error('Error opening database: ', error);
       throw error;
+    }
+  }
+
+  async runMigrations() {
+    // add columns latitude/longitude if they don't exist
+    await this.ensureColumnExists('journals', 'latitude', "REAL");
+    await this.ensureColumnExists('journals', 'longitude', "REAL");
+    // keep location stored in 'locationName' (your UI uses this). No rename needed.
+    // ensure createdAt exists (for older dbs)
+    await this.ensureColumnExists('journals', 'createdAt', "INTEGER DEFAULT (strftime('%s','now'))");
+  }
+
+  async ensureColumnExists(table, column, typeDDL) {
+    const [res] = await this.db.executeSql(`PRAGMA table_info(${table});`);
+    let exists = false;
+    for (let i = 0; i < res.rows.length; i++) {
+      if (res.rows.item(i).name === column) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      console.log(`Adding column ${column} to ${table}`);
+      await this.db.executeSql(`ALTER TABLE ${table} ADD COLUMN ${column} ${typeDDL};`);
     }
   }
 
@@ -44,6 +69,8 @@ class DatabaseService {
           description TEXT,
           locationName TEXT,
           dateTime TEXT,
+          latitude REAL,
+          longitude REAL,
           createdAt INTEGER DEFAULT (strftime('%s', 'now'))
         );
       `);
@@ -89,12 +116,11 @@ class DatabaseService {
     }
   }
 
-  // Generate tags from journal content
-  generateTags(title, description) {
+  // Generate tags from journal content (text-only baseline)
+  generateTextTags(title, description) {
     const tags = [];
     const text = `${title || ''} ${description || ''}`.toLowerCase();
-    
-    // Simple tag generation based on keywords
+
     const tagMap = {
       mountain: ['mountain', 'hill', 'peak', 'summit', 'hiking', 'trekking'],
       beach: ['beach', 'ocean', 'sea', 'coast', 'shore', 'sand'],
@@ -118,16 +144,12 @@ class DatabaseService {
         tags.push(tag);
       }
     }
-    
-    // If no tags generated, add a default based on content or just 'travel'
-    if (tags.length === 0) {
-      tags.push('travel');
-    }
-    
-    return [...new Set(tags)]; // Remove duplicates
+
+    if (tags.length === 0) tags.push('travel');
+    return [...new Set(tags)];
   }
 
-  // CRUD Operations for Journals
+  // --- CRUD Operations for Journals ---
 
   // Add a new journal entry
   async addJournal(journal) {
@@ -136,13 +158,23 @@ class DatabaseService {
         await this.initDB();
       }
 
-      const { id, title, description, locationName, dateTime, productImage } = journal;
+      const {
+        id,
+        title,
+        description,
+        locationName,
+        dateTime,
+        productImage,      // array of { id?, url }
+        latitude,
+        longitude,
+        tags               // optional array of strings (can be AI + text)
+      } = journal;
 
       // Insert journal data
       await this.db.executeSql(
-        `INSERT INTO journals (id, title, description, locationName, dateTime) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, title, description || '', locationName || '', dateTime || '']
+        `INSERT INTO journals (id, title, description, locationName, dateTime, latitude, longitude)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null]
       );
 
       // Insert images if any
@@ -156,9 +188,13 @@ class DatabaseService {
         }
       }
 
-      // Generate and insert tags
-      const tags = this.generateTags(title, description);
-      for (const tag of tags) {
+      // Determine tags: if provided use them; otherwise generate from text
+      const finalTags = (Array.isArray(tags) && tags.length > 0)
+        ? [...new Set(tags.map(t => String(t).trim()).filter(Boolean))]
+        : this.generateTextTags(title, description);
+
+      // Insert tags
+      for (const tag of finalTags) {
         await this.db.executeSql(
           `INSERT INTO journal_tags (journal_id, tag) VALUES (?, ?)`,
           [id, tag]
@@ -173,41 +209,45 @@ class DatabaseService {
     }
   }
 
-  // Get all journals
+  // Get all journals (including images + tags arrays)
   async getAllJournals() {
     try {
       if (!this.db) {
         await this.initDB();
       }
 
-      // Get all journals
       const [journalResults] = await this.db.executeSql(
         'SELECT * FROM journals ORDER BY createdAt DESC'
       );
 
       const journals = [];
-      
+
       for (let i = 0; i < journalResults.rows.length; i++) {
         const journal = journalResults.rows.item(i);
-        
-        // Get images for this journal
+
         const [imageResults] = await this.db.executeSql(
           'SELECT * FROM journal_images WHERE journal_id = ? ORDER BY image_order',
           [journal.id]
         );
-
         const productImage = [];
         for (let j = 0; j < imageResults.rows.length; j++) {
           const image = imageResults.rows.item(j);
-          productImage.push({
-            id: image.id,
-            url: image.image_url
-          });
+          productImage.push({ id: image.id, url: image.image_url });
+        }
+
+        const [tagResults] = await this.db.executeSql(
+          'SELECT tag FROM journal_tags WHERE journal_id = ?',
+          [journal.id]
+        );
+        const tags = [];
+        for (let t = 0; t < tagResults.rows.length; t++) {
+          tags.push(tagResults.rows.item(t).tag);
         }
 
         journals.push({
           ...journal,
-          productImage
+          productImage,
+          tags
         });
       }
 
@@ -225,21 +265,29 @@ class DatabaseService {
         await this.initDB();
       }
 
-      const { id, title, description, locationName, dateTime, productImage } = journal;
+      const {
+        id,
+        title,
+        description,
+        locationName,
+        dateTime,
+        productImage,
+        latitude,
+        longitude,
+        tags // optional override
+      } = journal;
 
-      // Update journal data
       await this.db.executeSql(
         `UPDATE journals 
-         SET title = ?, description = ?, locationName = ?, dateTime = ? 
+         SET title = ?, description = ?, locationName = ?, dateTime = ?, latitude = ?, longitude = ?
          WHERE id = ?`,
-        [title, description || '', locationName || '', dateTime || '', id]
+        [title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null, id]
       );
 
-      // Delete existing images and tags
+      // Replace images + tags
       await this.db.executeSql('DELETE FROM journal_images WHERE journal_id = ?', [id]);
       await this.db.executeSql('DELETE FROM journal_tags WHERE journal_id = ?', [id]);
 
-      // Insert new images
       if (productImage && productImage.length > 0) {
         for (let i = 0; i < productImage.length; i++) {
           const image = productImage[i];
@@ -250,9 +298,11 @@ class DatabaseService {
         }
       }
 
-      // Generate and insert new tags
-      const tags = this.generateTags(title, description);
-      for (const tag of tags) {
+      const finalTags = (Array.isArray(tags) && tags.length > 0)
+        ? [...new Set(tags.map(t => String(t).trim()).filter(Boolean))]
+        : this.generateTextTags(title, description);
+
+      for (const tag of finalTags) {
         await this.db.executeSql(
           `INSERT INTO journal_tags (journal_id, tag) VALUES (?, ?)`,
           [id, tag]
@@ -273,10 +323,7 @@ class DatabaseService {
       if (!this.db) {
         await this.initDB();
       }
-
-      // Delete journal (images and tags will be deleted automatically due to CASCADE)
       await this.db.executeSql('DELETE FROM journals WHERE id = ?', [id]);
-
       console.log('Journal deleted successfully');
       return true;
     } catch (error) {
@@ -293,7 +340,7 @@ class DatabaseService {
       }
 
       const { keyword, tags, startDate, endDate, locationRadius } = filters;
-      
+
       let query = `
         SELECT DISTINCT j.* FROM journals j
         LEFT JOIN journal_tags jt ON j.id = jt.journal_id
@@ -301,7 +348,6 @@ class DatabaseService {
       `;
       const params = [];
 
-      // Keyword search
       if (keyword && keyword.trim()) {
         const searchPattern = `%${keyword.toLowerCase()}%`;
         query += ` AND (
@@ -312,14 +358,12 @@ class DatabaseService {
         params.push(searchPattern, searchPattern, searchPattern);
       }
 
-      // Tags filter
       if (tags && tags.length > 0) {
         const tagPlaceholders = tags.map(() => '?').join(',');
         query += ` AND jt.tag IN (${tagPlaceholders})`;
         params.push(...tags);
       }
 
-      // Date range filter
       if (startDate) {
         query += ` AND date(j.dateTime) >= date(?)`;
         params.push(startDate);
@@ -330,7 +374,6 @@ class DatabaseService {
         params.push(endDate);
       }
 
-      // Location radius filter (simplified - just location name contains)
       if (locationRadius && locationRadius.trim()) {
         query += ` AND LOWER(j.locationName) LIKE ?`;
         params.push(`%${locationRadius.toLowerCase()}%`);
@@ -338,17 +381,12 @@ class DatabaseService {
 
       query += ` ORDER BY j.createdAt DESC`;
 
-      console.log('Search query:', query);
-      console.log('Search params:', params);
-
       const [journalResults] = await this.db.executeSql(query, params);
 
       const journals = [];
-      
       for (let i = 0; i < journalResults.rows.length; i++) {
         const journal = journalResults.rows.item(i);
-        
-        // Get images for this journal
+
         const [imageResults] = await this.db.executeSql(
           'SELECT * FROM journal_images WHERE journal_id = ? ORDER BY image_order',
           [journal.id]
@@ -357,15 +395,22 @@ class DatabaseService {
         const productImage = [];
         for (let j = 0; j < imageResults.rows.length; j++) {
           const image = imageResults.rows.item(j);
-          productImage.push({
-            id: image.id,
-            url: image.image_url
-          });
+          productImage.push({ id: image.id, url: image.image_url });
+        }
+
+        const [tagResults] = await this.db.executeSql(
+          'SELECT tag FROM journal_tags WHERE journal_id = ?',
+          [journal.id]
+        );
+        const tagsArr = [];
+        for (let t = 0; t < tagResults.rows.length; t++) {
+          tagsArr.push(tagResults.rows.item(t).tag);
         }
 
         journals.push({
           ...journal,
-          productImage
+          productImage,
+          tags: tagsArr
         });
       }
 
@@ -387,16 +432,13 @@ class DatabaseService {
       if (!this.db) {
         await this.initDB();
       }
-
       const [results] = await this.db.executeSql(
         'SELECT DISTINCT tag FROM journal_tags ORDER BY tag'
       );
-
       const tags = [];
       for (let i = 0; i < results.rows.length; i++) {
         tags.push(results.rows.item(i).tag);
       }
-
       return tags;
     } catch (error) {
       console.error('Error getting tags: ', error);
@@ -410,18 +452,15 @@ class DatabaseService {
       if (!this.db) {
         await this.initDB();
       }
-
       const [results] = await this.db.executeSql(
         `SELECT DISTINCT locationName FROM journals 
          WHERE locationName IS NOT NULL AND locationName != "" 
          ORDER BY locationName`
       );
-
       const locations = [];
       for (let i = 0; i < results.rows.length; i++) {
         locations.push(results.rows.item(i).locationName);
       }
-
       return locations;
     } catch (error) {
       console.error('Error getting locations: ', error);
@@ -435,7 +474,6 @@ class DatabaseService {
       if (!this.db) {
         await this.initDB();
       }
-
       const [results] = await this.db.executeSql(
         `SELECT 
           MIN(date(dateTime)) as minDate, 
@@ -443,15 +481,10 @@ class DatabaseService {
          FROM journals 
          WHERE dateTime IS NOT NULL AND dateTime != ""`
       );
-
       if (results.rows.length > 0) {
         const row = results.rows.item(0);
-        return {
-          minDate: row.minDate,
-          maxDate: row.maxDate
-        };
+        return { minDate: row.minDate, maxDate: row.maxDate };
       }
-
       return { minDate: null, maxDate: null };
     } catch (error) {
       console.error('Error getting date range: ', error);

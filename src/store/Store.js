@@ -28,15 +28,15 @@ export const useJournalStore = create((set, get) => ({
         ...entry,
         id: entry.id || Date.now().toString() + Math.random().toString(36).substr(2, 9)
       };
-      
+
       await DatabaseService.addJournal(journalWithId);
-      
+
       // Update local state
       set((state) => ({
         journals: [journalWithId, ...state.journals],
         isLoading: false
       }));
-      
+
       return journalWithId;
     } catch (error) {
       console.error('Error adding journal:', error);
@@ -50,7 +50,7 @@ export const useJournalStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await DatabaseService.updateJournal(updatedEntry);
-      
+
       // Update local state
       set((state) => ({
         journals: state.journals.map((journal) =>
@@ -70,7 +70,7 @@ export const useJournalStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await DatabaseService.deleteJournal(id);
-      
+
       // Update local state
       set((state) => ({
         journals: state.journals.filter((journal) => journal.id !== id),
@@ -86,10 +86,8 @@ export const useJournalStore = create((set, get) => ({
   // Simple search journals
   searchJournals: async (searchTerm) => {
     if (!searchTerm.trim()) {
-      // If search term is empty, return all journals
       return get().journals;
     }
-
     set({ isLoading: true, error: null });
     try {
       const results = await DatabaseService.searchJournals(searchTerm);
@@ -179,6 +177,6 @@ export const useJournalStore = create((set, get) => ({
   // Get loading state
   getLoadingState: () => get().isLoading,
 
-  // Get error state  
+  // Get error state
   getError: () => get().error,
 }));
