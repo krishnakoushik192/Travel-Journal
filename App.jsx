@@ -11,10 +11,8 @@ function App() {
   useEffect(() => {
     // Configure Google Sign-In when app starts
     GoogleSignin.configure({
-      webClientId: '162657482896-4uqb7eaf060a30lup6ofnj817tacloav.apps.googleusercontent.com',
-      offlineAccess: true,
-      hostedDomain: '',
-      forceCodeForRefreshToken: true,
+      webClientId: '187999964641-o0o88el0coep64k946vtpususrpbe0vc.apps.googleusercontent.com',
+      offlineAccess: false,
     });
     initializeStore();
   }, []);

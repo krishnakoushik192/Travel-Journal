@@ -15,6 +15,7 @@ export default function LoginScreen(props) {
       await AsyncStorage.setItem('user', JSON.stringify(userInfo));
       console.log('User Info:', userInfo);
     } catch (error) {
+      console.log(JSON.stringify(error,"==============>>>>>>1111"))
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         console.log('User cancelled sign in');
       } else {
