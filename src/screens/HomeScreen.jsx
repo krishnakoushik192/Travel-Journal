@@ -47,7 +47,7 @@ export default function HomeScreen(props) {
     refreshJournals,
     clearError 
   } = useJournalStore();
-  console.log('Journals:', journals);
+  console.log('Journals from home screen:', journals);
 
   // Handle search with debouncing
   useEffect(() => {

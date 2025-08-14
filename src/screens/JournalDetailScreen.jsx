@@ -351,6 +351,17 @@ export default function JournalDetails({ route, navigation }) {
                   <Text style={styles.description}>{journal.description}</Text>
                 </View>
               )}
+              {/* Tags */}
+
+              <View style={styles.tagsContainer}>
+                <Text style={styles.tagsTitle}>Tags:</Text>
+                {journal.tags.map((tag, index) => (
+                  <View key={index} style={styles.tag}>
+                    <Text>{index + 1} Image</Text>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
 
@@ -730,5 +741,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.textPrimary,
     fontWeight: '600',
+  },
+  tagsContainer: {
+    // flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+    // alignItems: 'center',
+  },
+  tag: {
+    backgroundColor: colors.tagBackground,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  tagText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 5
   },
 });

@@ -98,7 +98,7 @@ const JournalCard = ({ nav, item }) => {
                         </Text>
                     )}
                     <View style={styles.cardTags}>
-                        {generateTags().map((tag, index) => (
+                        {item.tags.map((tag, index) => (
                             <View key={`${tag}-${index}`} style={styles.tagContainer}>
                                 <Text style={styles.cardTag}>#{tag}</Text>
                             </View>
