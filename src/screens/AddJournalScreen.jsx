@@ -23,7 +23,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
 import { useJournalStore } from '../store/Store';
-import DatabaseService from '../services/DatabaseService'; // for text tag generation fallback
+import { getImageTags } from '../compoenents/VisionApi';
 
 const { width, height } = Dimensions.get('window');
 
@@ -63,21 +63,6 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       updateDateTime();
     }
   }, [isEditMode, journalToEdit]);
-
-  const ImageProcessing = async (imagePath) => {
-    if (!ImageTagger || !imagePath) return;
-    try {
-      console.log('Processing image:', imagePath);
-      const result = await ImageTagger.getImageTags(imagePath);
-      // result should be an array of strings; fallback sanitize
-      const aiTags = Array.isArray(result)
-        ? result.map(t => String(t).trim()).filter(Boolean)
-        : [];
-      setTags(prev => [...new Set([...(prev || []), ...aiTags])]);
-    } catch (err) {
-      console.error('ImageProcessing error', err);
-    }
-  };
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -249,12 +234,6 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setProductImage(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const mergeAllTags = () => {
-    const textTags = DatabaseService.generateTextTags(title, description);
-    const merged = [...new Set([...(tags || []), ...textTags])];
-    return merged;
-  };
-
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title for your journal entry.');
@@ -268,7 +247,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setIsSaving(true);
 
     try {
-      const finalTags = mergeAllTags();
+      const aiTags = await getImageTags(productImage);
 
       const journalData = {
         title,
@@ -278,7 +257,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         dateTime,       // "date_time"
         latitude,
         longitude,
-        tags: finalTags
+        tags: aiTags
       };
 
       if (isEditMode) {
@@ -296,13 +275,6 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           id: Math.random().toString(36).substr(2, 9),
         });
 
-        // Optionally kick off AI tag processing on the first image (won't change UI)
-        const firstUrl = newJournal?.productImage?.[0]?.url;
-        if (firstUrl) {
-          await ImageProcessing(firstUrl);
-        }
-
-        // Reset local state after saving
         setTitle('');
         setDescription('');
         setProductImage([]);

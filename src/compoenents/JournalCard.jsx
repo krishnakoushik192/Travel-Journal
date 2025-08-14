@@ -19,6 +19,7 @@ const colors = {
 
 const JournalCard = ({ nav, item }) => {
     // Get the first image from productImage array or use a default
+    console.log("JournalCard item:", item);
     const getDisplayImage = () => {
         if (item.productImage && item.productImage.length > 0) {
             return { uri: item.productImage[0].url };

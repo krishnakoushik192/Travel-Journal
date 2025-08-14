@@ -116,38 +116,6 @@ class DatabaseService {
     }
   }
 
-  // Generate tags from journal content (text-only baseline)
-  generateTextTags(title, description) {
-    const tags = [];
-    const text = `${title || ''} ${description || ''}`.toLowerCase();
-
-    const tagMap = {
-      mountain: ['mountain', 'hill', 'peak', 'summit', 'hiking', 'trekking'],
-      beach: ['beach', 'ocean', 'sea', 'coast', 'shore', 'sand'],
-      food: ['food', 'restaurant', 'eat', 'meal', 'dinner', 'lunch', 'breakfast', 'cafe'],
-      sunset: ['sunset', 'sunrise', 'dawn', 'dusk'],
-      city: ['city', 'urban', 'downtown', 'metropolitan'],
-      nature: ['nature', 'forest', 'park', 'wildlife', 'trees', 'garden'],
-      adventure: ['adventure', 'explore', 'journey', 'trip', 'travel'],
-      culture: ['culture', 'museum', 'art', 'history', 'heritage', 'monument'],
-      family: ['family', 'kids', 'children', 'parents'],
-      friends: ['friends', 'buddy', 'group'],
-      relaxation: ['relax', 'spa', 'peaceful', 'calm', 'quiet'],
-      festival: ['festival', 'celebration', 'event', 'party'],
-      architecture: ['building', 'architecture', 'church', 'temple', 'palace'],
-      shopping: ['shopping', 'market', 'store', 'bazaar'],
-      sports: ['sports', 'game', 'football', 'basketball', 'swimming']
-    };
-
-    for (const [tag, keywords] of Object.entries(tagMap)) {
-      if (keywords.some(keyword => text.includes(keyword))) {
-        tags.push(tag);
-      }
-    }
-
-    if (tags.length === 0) tags.push('travel');
-    return [...new Set(tags)];
-  }
 
   // --- CRUD Operations for Journals ---
 
@@ -188,10 +156,10 @@ class DatabaseService {
         }
       }
 
-      // Determine tags: if provided use them; otherwise generate from text
+      // Determine tags: if provided use them; otherwise use empty array
       const finalTags = (Array.isArray(tags) && tags.length > 0)
         ? [...new Set(tags.map(t => String(t).trim()).filter(Boolean))]
-        : this.generateTextTags(title, description);
+        : [];
 
       // Insert tags
       for (const tag of finalTags) {
