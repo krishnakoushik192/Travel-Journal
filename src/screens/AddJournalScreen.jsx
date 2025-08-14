@@ -15,6 +15,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  NativeModules
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
@@ -22,9 +23,12 @@ import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
 import { useJournalStore } from '../store/Store';
 
+
 const { width, height } = Dimensions.get('window');
 
 const AddEditJournalScreen = ({ route, navigation }) => {
+  const { ImageTagger } = NativeModules;
+  const [tags, setTags] = useState([]);
   const { addJournal, updateJournal, isLoading } = useJournalStore();
 
   // Check if we're in edit mode
@@ -53,6 +57,16 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       updateDateTime();
     }
   }, [isEditMode, journalToEdit]);
+
+  const ImageProcessing = async (imagePath) => {
+    console.log('Processing image:', imagePath);
+    ImageTagger.getImageTags(imagePath)
+      .then((result) => {
+        console.log('Tags:', result);
+        setTags(result);
+      })
+      .catch((err) => console.error(err));
+  }
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -268,6 +282,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           {
             text: 'OK',
             onPress: () => {
+              ImageProcessing(newJournal?.productImage[0]?.url); 
               // Navigate to the details of the newly created journal
               navigation?.navigate('Details', { journal: newJournal });
             }

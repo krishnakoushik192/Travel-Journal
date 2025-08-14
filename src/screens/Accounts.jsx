@@ -69,33 +69,6 @@ export default function Accounts(props) {
     console.log('User logged out');
   };
 
-  const menuItems = [
-    {
-      icon: 'cog-outline',
-      title: 'Settings',
-      onPress: () => console.log('Settings pressed'),
-    },
-    {
-      icon: 'bell-outline',
-      title: 'Notifications',
-      onPress: () => console.log('Notifications pressed'),
-    },
-    {
-      icon: 'shield-check-outline',
-      title: 'Privacy & Security',
-      onPress: () => console.log('Privacy pressed'),
-    },
-    {
-      icon: 'help-circle-outline',
-      title: 'Help & Support',
-      onPress: () => console.log('Help pressed'),
-    },
-    {
-      icon: 'information-outline',
-      title: 'About',
-      onPress: () => console.log('About pressed'),
-    },
-  ];
 
   return (
     <ImageBackground 
