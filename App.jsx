@@ -14,11 +14,6 @@ function App() {
   const [internetAvailable, setInternetAvailable] = useState(false)
 
   useEffect(() => {
-    // Configure Google Sign-In when app starts
-    GoogleSignin.configure({
-      webClientId: '187999964641-o0o88el0coep64k946vtpususrpbe0vc.apps.googleusercontent.com',
-      offlineAccess: false,
-    });
     const unsubscribe = NetInfo.addEventListener(state => {
       global.isConnected = state.isConnected;
       setInternetAvailable(state.isConnected)

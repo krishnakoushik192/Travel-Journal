@@ -202,7 +202,7 @@ export default function Accounts(props) {
                     <>
                       <Text style={styles.profileName}>{userInfo.full_name}</Text>
                       <Text style={styles.profileEmail}>{userInfo.email}</Text>
-                      <Text style={styles.profileBio}>{userInfo.bio || 'No bio available'}</Text>
+                      <Text style={styles.profileBio}>{userInfo.bio || 'Passionate travel storyteller exploring cultures, cuisines, and hidden gems across the globe. Dedicated to inspiring and guiding fellow travelers through detailed itineraries, honest reviews, and immersive photography.'}</Text>
                     </>
                   )}
                 </View>

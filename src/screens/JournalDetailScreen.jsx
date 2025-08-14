@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
   },
   tagsContainer: {
     // flexDirection: 'row',
-    flexWrap: 'wrap',
+    // flexWrap: 'wrap',
     marginTop: 12,
     gap: 8,
     // alignItems: 'center',
