@@ -18,6 +18,7 @@ import {
   NativeModules,
   ScrollView
 } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
 import Header from '../compoenents/Header';
@@ -28,6 +29,7 @@ import { getImageTags } from '../compoenents/VisionApi';
 const { width, height } = Dimensions.get('window');
 
 const AddEditJournalScreen = ({ route, navigation }) => {
+  const [internetAvailable, setInternetAvailable] = useState(false)
   const { ImageTagger } = NativeModules;
   const [tags, setTags] = useState([]); // holds AI tags (and/or extra)
   const { addJournal, updateJournal, isLoading } = useJournalStore();
@@ -62,6 +64,10 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       detectLocation();
       updateDateTime();
     }
+    const unsubscribe = NetInfo.addEventListener(state => {
+      global.isConnected = state.isConnected;
+      setInternetAvailable(state.isConnected);
+    });
   }, [isEditMode, journalToEdit]);
 
   const requestLocationPermission = async () => {
@@ -97,7 +103,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           setLatitude(lat);
           setLongitude(lng);
 
-          const response = await fetch(
+          const response = internetAvailable ? await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             {
               headers: {
@@ -105,8 +111,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                 "Accept-Language": "en"
               }
             }
-          );
-          const data = await response.json();
+          ) : null;
+          const data = internetAvailable ? await response.json() : "No Internet Connection";
           console.log('Location Data:', data);
 
           if (data && data.address) {
@@ -247,7 +253,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     setIsSaving(true);
 
     try {
-      const aiTags = await getImageTags(productImage);
+
+      const aiTags = internetAvailable ? await getImageTags(productImage) : [];
 
       const journalData = {
         title,
@@ -292,7 +299,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error saving journal:', error);
-      Alert.alert('Save Error','Failed to save journal entry. Please try again.',[{ text: 'OK' }]);
+      Alert.alert('Save Error', 'Failed to save journal entry. Please try again.', [{ text: 'OK' }]);
     } finally {
       setIsSaving(false);
     }
@@ -359,116 +366,116 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       )}
 
       <ScrollView>
-      <View style={styles.container}>
-        <Text style={styles.header}>
-          {isEditMode ? 'Edit Journal Entry' : 'Add New Journal Entry'}
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Title"
-          placeholderTextColor="#ccc"
-          value={title}
-          onChangeText={setTitle}
-          editable={!isSaving && !isLoading}
-        />
-
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Description"
-          placeholderTextColor="#ccc"
-          multiline
-          value={description}
-          onChangeText={setDescription}
-          editable={!isSaving && !isLoading}
-        />
-
-        <View style={styles.locationRow}>
-          <MaterialCommunityIcons name="map-marker-outline" size={20} color="#fff" />
-          <Text style={styles.locationText}>{locationName}</Text>
-        </View>
-        <View style={styles.locationRow}>
-          <MaterialCommunityIcons name="calendar-clock" size={20} color="#fff" />
-          <Text style={styles.locationText}>{dateTime}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.imagePickerButton,
-            (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerButtonDisabled
-          ]}
-          onPress={handleImageSelection}
-          disabled={productImage.length >= 5 || isSaving || isLoading}
-        >
-          <MaterialCommunityIcons
-            name="camera-plus"
-            size={20}
-            color={(productImage.length >= 5 || isSaving || isLoading) ? "#999" : "#fff"}
-            style={{ marginRight: 8 }}
-          />
-          <Text
-            style={[
-              styles.imagePickerText,
-              (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerTextDisabled
-            ]}
-          >
-            {productImage.length >= 5 ? 'Maximum 5 photos reached' : `Add Images (${productImage.length}/5)`}
+        <View style={styles.container}>
+          <Text style={styles.header}>
+            {isEditMode ? 'Edit Journal Entry' : 'Add New Journal Entry'}
           </Text>
-        </TouchableOpacity>
 
-        {productImage.length > 0 ? (
-          <FlatList
-            data={productImage}
-            keyExtractor={(item, index) => index.toString()}
-            horizontal
-            style={styles.imageList}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item, index }) => (
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: item.url }} style={styles.previewImage} />
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => removeImage(index)}
-                  disabled={isSaving || isLoading}
-                >
-                  <MaterialCommunityIcons name="close-circle" size={20} color="#ff4444" />
-                </TouchableOpacity>
-              </View>
-            )}
+          <TextInput
+            style={styles.input}
+            placeholder="Title"
+            placeholderTextColor="#ccc"
+            value={title}
+            onChangeText={setTitle}
+            editable={!isSaving && !isLoading}
           />
-        ) : (
-          <View style={styles.noImageContainer}>
-            <MaterialCommunityIcons name="camera-off" size={40} color="#999" />
-            <Text style={styles.noImageText}>
-              At least 1 photo is required for your journal entry
-            </Text>
+
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Description"
+            placeholderTextColor="#ccc"
+            multiline
+            value={description}
+            onChangeText={setDescription}
+            editable={!isSaving && !isLoading}
+          />
+
+          <View style={styles.locationRow}>
+            <MaterialCommunityIcons name="map-marker-outline" size={20} color="#fff" />
+            <Text style={styles.locationText}>{locationName}</Text>
           </View>
-        )}
+          <View style={styles.locationRow}>
+            <MaterialCommunityIcons name="calendar-clock" size={20} color="#fff" />
+            <Text style={styles.locationText}>{dateTime}</Text>
+          </View>
 
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            (productImage.length === 0 || isSaving || isLoading) && styles.saveButtonDisabled
-          ]}
-          onPress={handleSave}
-          disabled={productImage.length === 0 || isSaving || isLoading}
-        >
-          {(isSaving || isLoading) ? (
-            <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
-          ) : null}
-          <Text
+          <TouchableOpacity
             style={[
-              styles.saveText,
-              (productImage.length === 0 || isSaving || isLoading) && styles.saveTextDisabled
+              styles.imagePickerButton,
+              (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerButtonDisabled
             ]}
+            onPress={handleImageSelection}
+            disabled={productImage.length >= 5 || isSaving || isLoading}
           >
-            {isSaving || isLoading
-              ? (isEditMode ? 'Updating...' : 'Saving...')
-              : (isEditMode ? 'Update Journal Entry' : 'Save Journal Entry')
-            }
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <MaterialCommunityIcons
+              name="camera-plus"
+              size={20}
+              color={(productImage.length >= 5 || isSaving || isLoading) ? "#999" : "#fff"}
+              style={{ marginRight: 8 }}
+            />
+            <Text
+              style={[
+                styles.imagePickerText,
+                (productImage.length >= 5 || isSaving || isLoading) && styles.imagePickerTextDisabled
+              ]}
+            >
+              {productImage.length >= 5 ? 'Maximum 5 photos reached' : `Add Images (${productImage.length}/5)`}
+            </Text>
+          </TouchableOpacity>
+
+          {productImage.length > 0 ? (
+            <FlatList
+              data={productImage}
+              keyExtractor={(item, index) => index.toString()}
+              horizontal
+              style={styles.imageList}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item, index }) => (
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: item.url }} style={styles.previewImage} />
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeImage(index)}
+                    disabled={isSaving || isLoading}
+                  >
+                    <MaterialCommunityIcons name="close-circle" size={20} color="#ff4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          ) : (
+            <View style={styles.noImageContainer}>
+              <MaterialCommunityIcons name="camera-off" size={40} color="#999" />
+              <Text style={styles.noImageText}>
+                At least 1 photo is required for your journal entry
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              (productImage.length === 0 || isSaving || isLoading) && styles.saveButtonDisabled
+            ]}
+            onPress={handleSave}
+            disabled={productImage.length === 0 || isSaving || isLoading}
+          >
+            {(isSaving || isLoading) ? (
+              <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+            ) : null}
+            <Text
+              style={[
+                styles.saveText,
+                (productImage.length === 0 || isSaving || isLoading) && styles.saveTextDisabled
+              ]}
+            >
+              {isSaving || isLoading
+                ? (isEditMode ? 'Updating...' : 'Saving...')
+                : (isEditMode ? 'Update Journal Entry' : 'Save Journal Entry')
+              }
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       {Platform.OS === 'android' && <AndroidImageOptionsModal />}
       <LoadingModal />
