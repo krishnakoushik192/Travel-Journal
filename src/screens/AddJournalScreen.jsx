@@ -68,6 +68,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       global.isConnected = state.isConnected;
       setInternetAvailable(state.isConnected);
     });
+    unsubscribe();
   }, [isEditMode, journalToEdit]);
 
   const requestLocationPermission = async () => {

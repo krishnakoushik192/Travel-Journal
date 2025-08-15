@@ -268,7 +268,7 @@ class DatabaseService {
 
       const finalTags = (Array.isArray(tags) && tags.length > 0)
         ? [...new Set(tags.map(t => String(t).trim()).filter(Boolean))]
-        : this.generateTextTags(title, description);
+        : [];
 
       for (const tag of finalTags) {
         await this.db.executeSql(
