@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ImageBackground,
   Alert,
   Modal,
-  FlatList,
   Dimensions,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useJournalStore } from '../store/Store';
@@ -41,10 +42,20 @@ export default function JournalDetails({ route, navigation }) {
   const { removeJournal } = useJournalStore();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+  
+  // Animation values for carousel
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const carouselRef = useRef(null);
   
   // Get journal data from navigation params
   const journal = route?.params?.journal;
   console.log(journal);
+
+  // Calculate responsive dimensions
+  const imageHeight = Math.min(height * 0.3, 250);
+  const carouselItemWidth = width - 32; // Account for padding
+  const thumbnailSize = Math.min(60, width * 0.15);
 
   const handleEdit = () => {
     navigation?.navigate('EditJournal', { journal });
@@ -89,103 +100,134 @@ export default function JournalDetails({ route, navigation }) {
     }
   };
 
+  // Carousel navigation functions
+  const goToSlide = (index) => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({
+        x: index * carouselItemWidth,
+        animated: true,
+      });
+      setCurrentCarouselIndex(index);
+    }
+  };
+
+  const handleCarouselScroll = (event) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / carouselItemWidth);
+    setCurrentCarouselIndex(index);
+  };
+
+  const renderCarouselDots = () => {
+    if (!journal.productImage || journal.productImage.length <= 1) return null;
+
+    return (
+      <View style={styles.dotsContainer}>
+        {journal.productImage.map((_, index) => (
+          <Pressable
+            key={index}
+            onPress={() => goToSlide(index)}
+            style={[
+              styles.dot,
+              index === currentCarouselIndex && styles.activeDot
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
+
   const renderImageGallery = () => {
     if (!journal.productImage || journal.productImage.length === 0) {
       return (
-        <View style={styles.noImageContainer}>
+        <View style={[styles.noImageContainer, { height: imageHeight }]}>
           <MaterialCommunityIcons name="camera-off" size={40} color={colors.textMuted} />
           <Text style={styles.noImageText}>No images available</Text>
         </View>
       );
     }
 
-    if (journal.productImage.length === 1) {
-      // Single image - show full width
-      return (
-        <View style={styles.singleImageContainer}>
-          <Pressable onPress={() => openImageModal(0)}>
-            <Image 
-              source={{ uri: journal.productImage[0].url }} 
-              style={styles.singleImage}
-              resizeMode="cover"
-            />
-            <View style={styles.expandIcon}>
-              <MaterialCommunityIcons 
-                name="magnify-plus-outline" 
-                size={24} 
-                color={colors.white} 
-              />
-            </View>
-          </Pressable>
-        </View>
-      );
-    }
-
-    // Multiple images - show gallery layout
     return (
-      <View style={styles.galleryContainer}>
-        {/* Main featured image */}
-        <Pressable 
-          style={styles.featuredImageContainer}
-          onPress={() => openImageModal(0)}
-        >
-          <Image 
-            source={{ uri: journal.productImage[0].url }} 
-            style={styles.featuredImage}
-            resizeMode="cover"
-          />
-          <View style={styles.expandIcon}>
-            <MaterialCommunityIcons 
-              name="magnify-plus-outline" 
-              size={24} 
-              color={colors.white} 
-            />
-          </View>
-          <View style={styles.imageCounter}>
-            <MaterialCommunityIcons 
-              name="image-multiple" 
-              size={16} 
-              color={colors.white} 
-            />
-            <Text style={styles.imageCountText}>
-              {journal.productImage.length}
-            </Text>
-          </View>
-        </Pressable>
-
-        {/* Thumbnail strip */}
-        <ScrollView 
-          horizontal 
+      <View style={styles.carouselContainer}>
+        {/* Image Carousel */}
+        <ScrollView
+          ref={carouselRef}
+          horizontal
+          pagingEnabled
           showsHorizontalScrollIndicator={false}
-          style={styles.thumbnailStrip}
-          contentContainerStyle={styles.thumbnailContainer}
+          onMomentumScrollEnd={handleCarouselScroll}
+          scrollEventThrottle={16}
+          style={styles.carousel}
+          contentContainerStyle={styles.carouselContent}
         >
           {journal.productImage.map((image, index) => (
             <Pressable 
               key={index}
-              style={[
-                styles.thumbnailWrapper,
-                index === 0 && styles.activeThumbnail
-              ]}
+              style={[styles.carouselItem, { width: carouselItemWidth }]}
               onPress={() => openImageModal(index)}
             >
               <Image 
                 source={{ uri: image.url }} 
-                style={styles.thumbnail}
+                style={[styles.carouselImage, { height: imageHeight }]}
                 resizeMode="cover"
               />
-              {index === 0 && (
-                <View style={styles.activeThumbnailOverlay}>
-                  <MaterialCommunityIcons 
-                    name="check-circle" 
-                    size={16} 
-                    color={colors.primary} 
-                  />
+              <View style={styles.expandIcon}>
+                <MaterialCommunityIcons 
+                  name="magnify-plus-outline" 
+                  size={20} 
+                  color={colors.white} 
+                />
+              </View>
+              {/* Image counter */}
+              {journal.productImage.length > 1 && (
+                <View style={styles.imageCounter}>
+                  <Text style={styles.imageCountText}>
+                    {index + 1} / {journal.productImage.length}
+                  </Text>
                 </View>
               )}
             </Pressable>
           ))}
         </ScrollView>
+
+        {/* Carousel indicators */}
+        {renderCarouselDots()}
+
+        {/* Thumbnail navigation for multiple images */}
+        {journal.productImage.length > 1 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.thumbnailStrip}
+            contentContainerStyle={styles.thumbnailContainer}
+          >
+            {journal.productImage.map((image, index) => (
+              <Pressable 
+                key={index}
+                style={[
+                  styles.thumbnailWrapper,
+                  { width: thumbnailSize, height: thumbnailSize },
+                  index === currentCarouselIndex && styles.activeThumbnail
+                ]}
+                onPress={() => goToSlide(index)}
+              >
+                <Image 
+                  source={{ uri: image.url }} 
+                  style={[styles.thumbnail, { width: thumbnailSize, height: thumbnailSize }]}
+                  resizeMode="cover"
+                />
+                {index === currentCarouselIndex && (
+                  <View style={styles.activeThumbnailOverlay}>
+                    <MaterialCommunityIcons 
+                      name="check-circle" 
+                      size={Math.min(16, thumbnailSize * 0.25)} 
+                      color={colors.primary} 
+                    />
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </View>
     );
   };
@@ -323,13 +365,13 @@ export default function JournalDetails({ route, navigation }) {
         >
           {/* Main Card */}
           <View style={styles.mainCard}>
-            {/* Image Gallery */}
+            {/* Image Gallery Carousel */}
             {renderImageGallery()}
 
             {/* Content */}
             <View style={styles.contentContainer}>
               {/* Title */}
-              <Text style={styles.title}>{journal.title}</Text>
+              <Text style={styles.title} numberOfLines={2}>{journal.title}</Text>
 
               {/* Date & Time */}
               <Text style={styles.dateTime}>{journal.dateTime}</Text>
@@ -351,17 +393,29 @@ export default function JournalDetails({ route, navigation }) {
                   <Text style={styles.description}>{journal.description}</Text>
                 </View>
               )}
-              {/* Tags */}
 
-              <View style={styles.tagsContainer}>
-                <Text style={styles.tagsTitle}>Tags:</Text>
-                {journal.tags.map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text>{index + 1} Image</Text>
-                    <Text style={styles.tagText}>{tag}</Text>
+              {/* Tags */}
+              {journal.tags && journal.tags.length > 0 && (
+                <View style={styles.tagsContainer}>
+                  <Text style={styles.tagsTitle}>Tags</Text>
+                  <View style={styles.tagsWrapper}>
+                    {journal.tags.map((tag, index) => (
+                      <View key={index} style={styles.tagGroup}>
+                        <View style={styles.tagHeader}>
+                          <Text style={styles.tagIndexText}>Image {index + 1}</Text>
+                        </View>
+                        <View style={styles.tagsList}>
+                          {tag.split(',').map((singleTag, tagIndex) => (
+                            <View key={tagIndex} style={styles.tag}>
+                              <Text style={styles.tagText}>{singleTag.trim()}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
+                </View>
+              )}
             </View>
           </View>
 
@@ -420,7 +474,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: Math.min(20, width * 0.05),
     fontWeight: '700',
     color: colors.white,
     letterSpacing: 0.5,
@@ -449,29 +503,24 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   
-  // Single image styles
-  singleImageContainer: {
+  // Carousel styles
+  carouselContainer: {
     width: '100%',
-    height: 250,
+  },
+  carousel: {
+    width: '100%',
+  },
+  carouselContent: {
+    alignItems: 'center',
+  },
+  carouselItem: {
     position: 'relative',
+    borderRadius: 0,
+    overflow: 'hidden',
   },
-  singleImage: {
+  carouselImage: {
     width: '100%',
-    height: '100%',
-  },
-
-  // Gallery styles
-  galleryContainer: {
-    width: '100%',
-  },
-  featuredImageContainer: {
-    width: '100%',
-    height: 220,
-    position: 'relative',
-  },
-  featuredImage: {
-    width: '100%',
-    height: '100%',
+    borderRadius: 0,
   },
   expandIcon: {
     position: 'absolute',
@@ -489,15 +538,34 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
   },
   imageCountText: {
     color: colors.white,
     fontSize: 12,
     fontWeight: '600',
   },
+  
+  // Dots indicator
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: colors.searchBackground,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(45, 80, 22, 0.3)',
+  },
+  activeDot: {
+    backgroundColor: colors.primary,
+    width: 20,
+  },
+
+  // Thumbnail strip
   thumbnailStrip: {
     backgroundColor: colors.searchBackground,
     paddingVertical: 8,
@@ -505,6 +573,7 @@ const styles = StyleSheet.create({
   thumbnailContainer: {
     paddingHorizontal: 12,
     gap: 8,
+    alignItems: 'center',
   },
   thumbnailWrapper: {
     position: 'relative',
@@ -517,8 +586,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   thumbnail: {
-    width: 60,
-    height: 60,
+    borderRadius: 6,
   },
   activeThumbnailOverlay: {
     position: 'absolute',
@@ -531,48 +599,97 @@ const styles = StyleSheet.create({
 
   // Content styles
   contentContainer: {
-    padding: 20,
+    padding: Math.max(16, width * 0.04),
   },
   title: {
-    fontSize: 24,
+    fontSize: Math.min(24, width * 0.06),
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 8,
     letterSpacing: 0.5,
+    lineHeight: Math.min(30, width * 0.075),
   },
   dateTime: {
-    fontSize: 14,
+    fontSize: Math.min(14, width * 0.035),
     color: colors.textMuted,
     marginBottom: 12,
     fontWeight: '500',
   },
   locationContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
     gap: 4,
     paddingHorizontal: 8,
   },
   location: {
-    fontSize: 14,
+    fontSize: Math.min(14, width * 0.035),
     color: colors.textMuted,
     fontWeight: '500',
+    flex: 1,
+    lineHeight: 20,
   },
   descriptionContainer: {
     marginTop: 8,
   },
   descriptionTitle: {
-    fontSize: 18,
+    fontSize: Math.min(18, width * 0.045),
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 12,
     letterSpacing: 0.3,
   },
   description: {
-    fontSize: 16,
+    fontSize: Math.min(16, width * 0.04),
     color: colors.textSecondary,
-    lineHeight: 24,
+    lineHeight: Math.min(24, width * 0.06),
     fontWeight: '400',
+  },
+
+  // Tags styles
+  tagsContainer: {
+    marginTop: 20,
+  },
+  tagsTitle: {
+    fontSize: Math.min(18, width * 0.045),
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+  tagsWrapper: {
+    gap: 12,
+  },
+  tagGroup: {
+    backgroundColor: colors.tagBackground,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  tagHeader: {
+    marginBottom: 8,
+  },
+  tagIndexText: {
+    fontSize: Math.min(14, width * 0.035),
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  tagsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tag: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  tagText: {
+    color: colors.white,
+    fontSize: Math.min(12, width * 0.03),
+    fontWeight: '500',
   },
 
   // Action buttons
@@ -596,7 +713,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: Math.min(16, width * 0.04),
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -614,7 +731,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: colors.danger,
-    fontSize: 16,
+    fontSize: Math.min(16, width * 0.04),
     fontWeight: '600',
     letterSpacing: 0.5,
   },
@@ -622,14 +739,13 @@ const styles = StyleSheet.create({
   // No image state
   noImageContainer: {
     width: '100%',
-    height: 220,
     backgroundColor: colors.searchBackground,
     justifyContent: 'center',
     alignItems: 'center',
   },
   noImageText: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: Math.min(14, width * 0.035),
     marginTop: 8,
     fontStyle: 'italic',
   },
@@ -738,29 +854,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: Math.min(18, width * 0.045),
     color: colors.textPrimary,
     fontWeight: '600',
-  },
-  tagsContainer: {
-    // flexDirection: 'row',
-    // flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-    // alignItems: 'center',
-  },
-  tag: {
-    backgroundColor: colors.tagBackground,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  tagText: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 5
   },
 });

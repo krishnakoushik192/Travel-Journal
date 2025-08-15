@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, Image, ScrollView, Dimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const colors = {
     primary: '#2D5016', // Deep forest green
@@ -15,19 +17,91 @@ const colors = {
     tagBackground: '#F0F8F0', // Almost white with green tint
     shadow: '#2D5016', // Deep green shadow
     overlay: 'rgba(45, 80, 22, 0.4)', // Deep green overlay
+    white: '#FFFFFF',
+    indicatorActive: '#4A7C59',
+    indicatorInactive: 'rgba(74, 124, 89, 0.3)',
 };
 
 const JournalCard = ({ nav, item }) => {
-    // Get the first image from productImage array or use a default
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+    const scrollViewRef = useRef(null);
+    const autoPlayIntervalRef = useRef(null);
+    
+    // Calculate responsive dimensions
+    const cardWidth = screenWidth - 32; // 16px margin on each side
+    const imageHeight = Math.min(220, screenWidth * 0.6); // Responsive height with max
+
     console.log("JournalCard item:", item);
-    const getDisplayImage = () => {
-        if (item.productImage && item.productImage.length > 0) {
-            return { uri: item.productImage[0].url };
+    
+    const images = item.productImage && item.productImage.length > 0 
+        ? item.productImage 
+        : [{ url: 'https://via.placeholder.com/400x220/D4E7D4/4A7C59?text=No+Image' }];
+
+    // Auto-play functionality
+    useEffect(() => {
+        if (images.length > 1 && isAutoPlaying) {
+            autoPlayIntervalRef.current = setInterval(() => {
+                setCurrentImageIndex((prevIndex) => {
+                    const nextIndex = (prevIndex + 1) % images.length;
+                    scrollViewRef.current?.scrollTo({
+                        x: nextIndex * cardWidth,
+                        animated: true,
+                    });
+                    return nextIndex;
+                });
+            }, 3000); // Change image every 3 seconds
         }
+
+        return () => {
+            if (autoPlayIntervalRef.current) {
+                clearInterval(autoPlayIntervalRef.current);
+            }
+        };
+    }, [images.length, isAutoPlaying, cardWidth]);
+
+    // Pause auto-play when user interacts
+    const pauseAutoPlay = () => {
+        setIsAutoPlaying(false);
+        if (autoPlayIntervalRef.current) {
+            clearInterval(autoPlayIntervalRef.current);
+        }
+        
+        // Resume auto-play after 5 seconds of no interaction
+        setTimeout(() => {
+            setIsAutoPlaying(true);
+        }, 5000);
     };
 
-    // Create tags from title and description (simple implementation)
+    // Handle scroll for image carousel
+    const handleScroll = (event) => {
+        const scrollPosition = event.nativeEvent.contentOffset.x;
+        const index = Math.round(scrollPosition / cardWidth);
+        setCurrentImageIndex(index);
+        pauseAutoPlay(); // Pause when user scrolls manually
+    };
+
+    // Navigate to specific image
+    const navigateToImage = (index) => {
+        setCurrentImageIndex(index);
+        pauseAutoPlay(); // Pause when user taps indicator
+        scrollViewRef.current?.scrollTo({
+            x: index * cardWidth,
+            animated: true,
+        });
+    };
+
+    // Handle touch start to pause auto-play
+    const handleTouchStart = () => {
+        pauseAutoPlay();
+    };
+
+    // Create tags from title and description
     const generateTags = () => {
+        if (item.tags && item.tags.length > 0) {
+            return item.tags.slice(0, 3);
+        }
+
         const tags = [];
         const text = `${item.title || ''} ${item.description || ''}`.toLowerCase();
         
@@ -49,82 +123,145 @@ const JournalCard = ({ nav, item }) => {
         return tags.slice(0, 3); // Limit to 3 tags
     };
 
+    const displayTags = generateTags();
+
     return (
-        <Pressable
-            onPress={() => nav.navigation.navigate('Details', { journal: item })}
-            style={({ pressed }) => [
-                styles.card,
-                pressed && styles.cardPressed
-            ]}
-        >
-            <View style={styles.cardInner}>
-                <View style={styles.imageContainer}>
-                    <Image
-                        source={getDisplayImage()}
-                        style={styles.cardImage}
-                        resizeMode="cover"
-                    />
-                    <View style={styles.imageOverlay} />
-                </View>
-                <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                        {item.title || 'Untitled Entry'}
-                    </Text>
-                    <View style={styles.cardMeta}>
-                        <View style={styles.metaRow}>
-                            <MaterialCommunityIcons
-                                name="calendar-outline"
-                                size={14}
-                                color={colors.textMuted}
-                            />
-                            <Text style={styles.cardDate}>
-                                {(item.dateTime)}
-                            </Text>
-                        </View>
-                        <View style={styles.metaRow}>
-                            <MaterialCommunityIcons
-                                name="map-marker-outline"
-                                size={14}
-                                color={colors.textMuted}
-                            />
-                            <Text style={styles.cardLocation} numberOfLines={1}>
-                                {item.locationName || 'Unknown location'}
-                            </Text>
-                        </View>
-                    </View>
-                    {item.description && (
-                        <Text style={styles.cardDescription} numberOfLines={5}>
-                            {item.description}
-                        </Text>
-                    )}
-                    <View style={styles.cardTags}>
-                        {item.tags.map((tag, index) => (
-                            <View key={`${tag}-${index}`} style={styles.tagContainer}>
-                                <Text style={styles.cardTag}>#{tag}</Text>
+        <View style={[styles.cardContainer, { width: cardWidth }]}>
+            <Pressable
+                onPress={() => nav.navigation.navigate('Details', { journal: item })}
+                style={({ pressed }) => [
+                    styles.card,
+                    pressed && styles.cardPressed
+                ]}
+            >
+                <View style={styles.cardInner}>
+                    {/* Image Carousel Section */}
+                    <View style={styles.imageContainer}>
+                        <ScrollView
+                            ref={scrollViewRef}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onScroll={handleScroll}
+                            onTouchStart={handleTouchStart}
+                            scrollEventThrottle={16}
+                            style={styles.imageScrollView}
+                            contentContainerStyle={{ alignItems: 'center' }}
+                        >
+                            {images.map((image, index) => (
+                                <View key={index} style={[styles.imageSlide, { width: cardWidth }]}>
+                                    <Image
+                                        source={{ uri: image.url }}
+                                        style={[styles.cardImage, { height: imageHeight }]}
+                                        resizeMode="cover"
+                                    />
+                                </View>
+                            ))}
+                        </ScrollView>
+                        
+                        {/* Image overlay */}
+                        <View style={[styles.imageOverlay, { height: imageHeight }]} />
+                        
+                        {/* Image indicators */}
+                        {images.length > 1 && (
+                            <View style={styles.indicatorContainer}>
+                                {images.map((_, index) => (
+                                    <Pressable
+                                        key={index}
+                                        onPress={() => navigateToImage(index)}
+                                        style={[
+                                            styles.indicator,
+                                            {
+                                                backgroundColor: index === currentImageIndex 
+                                                    ? colors.indicatorActive 
+                                                    : colors.indicatorInactive
+                                            }
+                                        ]}
+                                    />
+                                ))}
                             </View>
-                        ))}
-                        {item.productImage && item.productImage.length > 0 && (
-                            <View style={styles.imageCountTag}>
+                        )}
+                        
+                        {/* Auto-play indicator */}
+                        {images.length > 1 && (
+                            <View style={styles.autoPlayIndicator}>
                                 <MaterialCommunityIcons
-                                    name="camera"
-                                    size={12}
-                                    color={colors.secondary}
+                                    name={isAutoPlaying ? "play-circle" : "pause-circle"}
+                                    size={20}
+                                    color={colors.white}
                                 />
-                                <Text style={styles.imageCountText}>
-                                    {item.productImage.length}
-                                </Text>
                             </View>
                         )}
                     </View>
+
+                    {/* Content Section */}
+                    <View style={styles.cardContent}>
+                        <Text style={styles.cardTitle} numberOfLines={2}>
+                            {item.title || 'Untitled Entry'}
+                        </Text>
+                        
+                        <View style={styles.cardMeta}>
+                            <View style={styles.metaRow}>
+                                <MaterialCommunityIcons
+                                    name="calendar-outline"
+                                    size={16}
+                                    color={colors.textMuted}
+                                />
+                                <Text style={styles.cardDate}>
+                                    {item.dateTime || 'No date'}
+                                </Text>
+                            </View>
+                            <View style={styles.metaRow}>
+                                <MaterialCommunityIcons
+                                    name="map-marker-outline"
+                                    size={16}
+                                    color={colors.textMuted}
+                                />
+                                <Text style={styles.cardLocation} numberOfLines={1}>
+                                    {item.locationName || 'Unknown location'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {item.description && (
+                            <Text style={styles.cardDescription} numberOfLines={3}>
+                                {item.description}
+                            </Text>
+                        )}
+
+                        {/* Tags Section */}
+                        <View style={styles.cardTags}>
+                            {displayTags.map((tag, index) => (
+                                <View key={`${tag}-${index}`} style={styles.tagContainer}>
+                                    <Text style={styles.cardTag}>#{tag}</Text>
+                                </View>
+                            ))}
+                            {item.productImage && item.productImage.length > 0 && (
+                                <View style={styles.imageCountTag}>
+                                    <MaterialCommunityIcons
+                                        name="image-multiple"
+                                        size={14}
+                                        color={colors.secondary}
+                                    />
+                                    <Text style={styles.imageCountText}>
+                                        {item.productImage.length}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
                 </View>
-            </View>
-        </Pressable>
+            </Pressable>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    cardContainer: {
+        alignSelf: 'center',
+        marginVertical: 8,
+    },
     card: {
-        marginVertical: 10,
         borderRadius: 20,
         shadowColor: colors.shadow,
         shadowOffset: {
@@ -150,50 +287,109 @@ const styles = StyleSheet.create({
     imageContainer: {
         position: 'relative',
     },
+    imageScrollView: {
+        width: '100%',
+    },
+    imageSlide: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     cardImage: {
         width: '100%',
-        height: 220,
-        backgroundColor: colors.searchBackground, // Fallback color
+        backgroundColor: colors.searchBackground,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
     },
     imageOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    indicatorContainer: {
+        position: 'absolute',
+        bottom: 16,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    indicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: colors.white,
+    },
+    imageCounter: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    imageCounterText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.white,
+    },
+    autoPlayIndicator: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: 20,
+        padding: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     cardContent: {
         padding: 16,
     },
     cardTitle: {
-        fontSize: 20,
+        fontSize: Math.min(20, screenWidth * 0.055), // Responsive font size
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: 8,
         letterSpacing: 0.5,
+        lineHeight: Math.min(26, screenWidth * 0.07),
     },
     cardMeta: {
         marginBottom: 12,
+        gap: 4,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
     },
     cardDate: {
-        fontSize: 14,
+        fontSize: Math.min(14, screenWidth * 0.038),
         color: colors.textMuted,
-        marginLeft: 6,
+        marginLeft: 8,
         fontWeight: '500',
+        flex: 1,
     },
     cardLocation: {
-        fontSize: 14,
+        fontSize: Math.min(14, screenWidth * 0.038),
         color: colors.textMuted,
-        marginLeft: 6,
+        marginLeft: 8,
         fontWeight: '500',
         flex: 1,
     },
     cardDescription: {
-        fontSize: 14,
+        fontSize: Math.min(14, screenWidth * 0.038),
         color: colors.textSecondary,
-        lineHeight: 20,
+        lineHeight: Math.min(20, screenWidth * 0.055),
         marginBottom: 12,
     },
     cardTags: {
@@ -219,7 +415,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     cardTag: {
-        fontSize: 12,
+        fontSize: Math.min(12, screenWidth * 0.032),
         fontWeight: '600',
         color: colors.secondary,
         letterSpacing: 0.5,
@@ -227,8 +423,8 @@ const styles = StyleSheet.create({
     imageCountTag: {
         backgroundColor: colors.tagBackground,
         borderRadius: 15,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
@@ -236,7 +432,7 @@ const styles = StyleSheet.create({
         borderColor: colors.secondary,
     },
     imageCountText: {
-        fontSize: 11,
+        fontSize: Math.min(11, screenWidth * 0.03),
         fontWeight: '600',
         color: colors.secondary,
     },
