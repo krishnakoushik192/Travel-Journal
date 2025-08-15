@@ -43,11 +43,11 @@ export default function JournalDetails({ route, navigation }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
-  
+
   // Animation values for carousel
   const scrollX = useRef(new Animated.Value(0)).current;
   const carouselRef = useRef(null);
-  
+
   // Get journal data from navigation params
   const journal = route?.params?.journal;
   console.log(journal);
@@ -67,8 +67,8 @@ export default function JournalDetails({ route, navigation }) {
       'Are you sure you want to delete this journal entry? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             removeJournal(id);
@@ -160,21 +160,21 @@ export default function JournalDetails({ route, navigation }) {
           contentContainerStyle={styles.carouselContent}
         >
           {journal.productImage.map((image, index) => (
-            <Pressable 
+            <Pressable
               key={index}
               style={[styles.carouselItem, { width: carouselItemWidth }]}
               onPress={() => openImageModal(index)}
             >
-              <Image 
-                source={{ uri: image.url }} 
+              <Image
+                source={{ uri: image.url }}
                 style={[styles.carouselImage, { height: imageHeight }]}
                 resizeMode="cover"
               />
               <View style={styles.expandIcon}>
-                <MaterialCommunityIcons 
-                  name="magnify-plus-outline" 
-                  size={20} 
-                  color={colors.white} 
+                <MaterialCommunityIcons
+                  name="magnify-plus-outline"
+                  size={20}
+                  color={colors.white}
                 />
               </View>
               {/* Image counter */}
@@ -194,14 +194,14 @@ export default function JournalDetails({ route, navigation }) {
 
         {/* Thumbnail navigation for multiple images */}
         {journal.productImage.length > 1 && (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.thumbnailStrip}
             contentContainerStyle={styles.thumbnailContainer}
           >
             {journal.productImage.map((image, index) => (
-              <Pressable 
+              <Pressable
                 key={index}
                 style={[
                   styles.thumbnailWrapper,
@@ -210,17 +210,17 @@ export default function JournalDetails({ route, navigation }) {
                 ]}
                 onPress={() => goToSlide(index)}
               >
-                <Image 
-                  source={{ uri: image.url }} 
+                <Image
+                  source={{ uri: image.url }}
                   style={[styles.thumbnail, { width: thumbnailSize, height: thumbnailSize }]}
                   resizeMode="cover"
                 />
                 {index === currentCarouselIndex && (
                   <View style={styles.activeThumbnailOverlay}>
-                    <MaterialCommunityIcons 
-                      name="check-circle" 
-                      size={Math.min(16, thumbnailSize * 0.25)} 
-                      color={colors.primary} 
+                    <MaterialCommunityIcons
+                      name="check-circle"
+                      size={Math.min(16, thumbnailSize * 0.25)}
+                      color={colors.primary}
                     />
                   </View>
                 )}
@@ -256,8 +256,8 @@ export default function JournalDetails({ route, navigation }) {
         <View style={styles.imageViewerContainer}>
           {journal.productImage && journal.productImage[selectedImageIndex] && (
             <View style={styles.fullScreenImageContainer}>
-              <Image 
-                source={{ uri: journal.productImage[selectedImageIndex].url }} 
+              <Image
+                source={{ uri: journal.productImage[selectedImageIndex].url }}
                 style={styles.fullScreenImage}
                 resizeMode="contain"
               />
@@ -269,27 +269,27 @@ export default function JournalDetails({ route, navigation }) {
         {journal.productImage && journal.productImage.length > 1 && (
           <>
             {selectedImageIndex > 0 && (
-              <Pressable 
+              <Pressable
                 style={[styles.navArrow, styles.leftArrow]}
                 onPress={navigateToPrevImage}
               >
-                <MaterialCommunityIcons 
-                  name="chevron-left" 
-                  size={32} 
-                  color={colors.white} 
+                <MaterialCommunityIcons
+                  name="chevron-left"
+                  size={32}
+                  color={colors.white}
                 />
               </Pressable>
             )}
-            
+
             {selectedImageIndex < journal.productImage.length - 1 && (
-              <Pressable 
+              <Pressable
                 style={[styles.navArrow, styles.rightArrow]}
                 onPress={navigateToNextImage}
               >
-                <MaterialCommunityIcons 
-                  name="chevron-right" 
-                  size={32} 
-                  color={colors.white} 
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={32}
+                  color={colors.white}
                 />
               </Pressable>
             )}
@@ -315,12 +315,12 @@ export default function JournalDetails({ route, navigation }) {
         {/* Swipe gestures for touch navigation */}
         <View style={styles.swipeOverlay} pointerEvents="box-none">
           {/* Left swipe area */}
-          <Pressable 
+          <Pressable
             style={styles.leftSwipeArea}
             onPress={navigateToPrevImage}
           />
           {/* Right swipe area */}
-          <Pressable 
+          <Pressable
             style={styles.rightSwipeArea}
             onPress={navigateToNextImage}
           />
@@ -338,27 +338,27 @@ export default function JournalDetails({ route, navigation }) {
   }
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../assets/BG.jpg')}
       style={styles.background}
     >
       <View style={styles.overlay}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable 
+          <Pressable
             onPress={() => navigation?.goBack()}
             style={styles.backButton}
           >
-            <MaterialCommunityIcons 
-              name="arrow-left" 
-              size={24} 
-              color={colors.white} 
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color={colors.white}
             />
           </Pressable>
           <Text style={styles.headerTitle}>Journal Detail</Text>
         </View>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -378,10 +378,10 @@ export default function JournalDetails({ route, navigation }) {
 
               {/* Location */}
               <View style={styles.locationContainer}>
-                <MaterialCommunityIcons 
-                  name="map-marker" 
-                  size={16} 
-                  color={colors.textMuted} 
+                <MaterialCommunityIcons
+                  name="map-marker"
+                  size={16}
+                  color={colors.textMuted}
                 />
                 <Text style={styles.location} numberOfLines={3}>{journal.locationName}</Text>
               </View>
@@ -399,20 +399,34 @@ export default function JournalDetails({ route, navigation }) {
                 <View style={styles.tagsContainer}>
                   <Text style={styles.tagsTitle}>Tags</Text>
                   <View style={styles.tagsWrapper}>
-                    {journal.tags.map((tag, index) => (
-                      <View key={index} style={styles.tagGroup}>
-                        <View style={styles.tagHeader}>
-                          <Text style={styles.tagIndexText}>Image {index + 1}</Text>
+                    {journal.tags.map((tag, index) => {
+                      // Add safety checks to prevent errors
+                      if (!tag) return null;
+
+                      // Convert to string if it's not already
+                      const tagString = typeof tag === 'string' ? tag : String(tag);
+
+                      return (
+                        <View key={index} style={styles.tagGroup}>
+                          <View style={styles.tagHeader}>
+                            <Text style={styles.tagIndexText}>Image {index + 1}</Text>
+                          </View>
+                          <View style={styles.tagsList}>
+                            {tagString.split(',').map((singleTag, tagIndex) => {
+                              // Trim whitespace and check if tag is not empty
+                              const trimmedTag = singleTag.trim();
+                              if (!trimmedTag) return null;
+
+                              return (
+                                <View key={tagIndex} style={styles.tag}>
+                                  <Text style={styles.tagText}>{trimmedTag}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
                         </View>
-                        <View style={styles.tagsList}>
-                          {tag.split(',').map((singleTag, tagIndex) => (
-                            <View key={tagIndex} style={styles.tag}>
-                              <Text style={styles.tagText}>{singleTag.trim()}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
               )}
@@ -422,22 +436,22 @@ export default function JournalDetails({ route, navigation }) {
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
             <Pressable style={styles.editButton} onPress={handleEdit}>
-              <MaterialCommunityIcons 
-                name="pencil" 
-                size={20} 
-                color={colors.white} 
+              <MaterialCommunityIcons
+                name="pencil"
+                size={20}
+                color={colors.white}
               />
               <Text style={styles.editButtonText}>Edit Journal</Text>
             </Pressable>
 
-            <Pressable 
-              style={styles.deleteButton} 
+            <Pressable
+              style={styles.deleteButton}
               onPress={() => handleDelete(journal.id)}
             >
-              <MaterialCommunityIcons 
-                name="delete-outline" 
-                size={20} 
-                color={colors.danger} 
+              <MaterialCommunityIcons
+                name="delete-outline"
+                size={20}
+                color={colors.danger}
               />
               <Text style={styles.deleteButtonText}>Delete Journal</Text>
             </Pressable>
@@ -502,7 +516,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  
+
   // Carousel styles
   carouselContainer: {
     width: '100%',
@@ -544,7 +558,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  
+
   // Dots indicator
   dotsContainer: {
     flexDirection: 'row',
