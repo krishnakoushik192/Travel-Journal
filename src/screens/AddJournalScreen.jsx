@@ -112,8 +112,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                 "Accept-Language": "en"
               }
             }
-          ) : null;
-          const data = internetAvailable ? await response.json() : "No Internet Connection";
+          ) : '';
+          const data = response ? await response.json() : '';
           console.log('Location Data:', data);
 
           if (data && data.address) {
