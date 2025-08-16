@@ -104,7 +104,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           setLatitude(lat);
           setLongitude(lng);
 
-          const response = internetAvailable ? await fetch(
+          const response =  await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             {
               headers: {
@@ -112,8 +112,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                 "Accept-Language": "en"
               }
             }
-          ) : '';
-          const data = response ? await response.json() : '';
+          ) ;
+          const data =  await response.json();
           console.log('Location Data:', data);
 
           if (data && data.address) {
@@ -275,7 +275,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         });
 
         Alert.alert('Updated', 'Your journal entry has been updated.', [
-          { text: 'OK', onPress: () => navigation?.goBack() }
+          { text: 'OK', onPress: () => navigation?.navigate('Tabs') }
         ]);
       } else {
         const newJournal = await addJournal({
