@@ -41,6 +41,8 @@ class DatabaseService {
     // keep location stored in 'locationName' (your UI uses this). No rename needed.
     // ensure createdAt exists (for older dbs)
     await this.ensureColumnExists('journals', 'createdAt', "INTEGER DEFAULT (strftime('%s','now'))");
+    // ensure synced column exists
+    await this.ensureColumnExists('journals', 'synced', 'INTEGER DEFAULT 0');
   }
 
   async ensureColumnExists(table, column, typeDDL) {
@@ -71,7 +73,8 @@ class DatabaseService {
           dateTime TEXT,
           latitude REAL,
           longitude REAL,
-          createdAt INTEGER DEFAULT (strftime('%s', 'now'))
+          createdAt INTEGER DEFAULT (strftime('%s', 'now')),
+          synced INTEGER DEFAULT 0
         );
       `);
 
@@ -138,11 +141,11 @@ class DatabaseService {
         tags               // optional array of strings (can be AI + text)
       } = journal;
 
-      // Insert journal data
+      // Insert journal data - new entries are unsynced by default
       await this.db.executeSql(
-        `INSERT INTO journals (id, title, description, locationName, dateTime, latitude, longitude)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null]
+        `INSERT INTO journals (id, title, description, locationName, dateTime, latitude, longitude, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null, 0]
       );
 
       // Insert images if any
@@ -245,11 +248,12 @@ class DatabaseService {
         tags // optional override
       } = journal;
 
+      // Update journal data and mark as unsynced
       await this.db.executeSql(
         `UPDATE journals 
-         SET title = ?, description = ?, locationName = ?, dateTime = ?, latitude = ?, longitude = ?
+         SET title = ?, description = ?, locationName = ?, dateTime = ?, latitude = ?, longitude = ?, synced = ?
          WHERE id = ?`,
-        [title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null, id]
+        [title, description || '', locationName || '', dateTime || '', latitude ?? null, longitude ?? null, 0, id]
       );
 
       // Replace images + tags
@@ -277,7 +281,7 @@ class DatabaseService {
         );
       }
 
-      console.log('Journal updated successfully');
+      console.log('Journal updated successfully and marked for sync');
       return true;
     } catch (error) {
       console.error('Error updating journal: ', error);

@@ -16,7 +16,7 @@ const colors = {
     textMuted: '#6B7B6B',
     tagBackground: '#F0F8F0',
     shadow: '#2D5016',
-    overlay: 'rgba(45, 80, 22, 0.4)',
+    overlay: 'rgba(0, 0, 0, 0.4)',
     white: '#FFFFFF',
     indicatorActive: '#4A7C59',
     indicatorInactive: 'rgba(74, 124, 89, 0.3)',

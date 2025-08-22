@@ -33,7 +33,7 @@ const colors = {
   textMuted: '#6B7B6B', // Muted green-gray
   tagBackground: '#F0F8F0', // Almost white with green tint
   shadow: '#2D5016', // Deep green shadow
-  overlay: 'rgba(45, 80, 22, 0.4)', // Deep green overlay
+  overlay: 'rgba(0, 0, 0, 0.4)', // Deep green overlay
   white: '#FFFFFF',
   selectedTag: '#6B9080',
   unselectedTag: '#D4E7D4',
