@@ -70,12 +70,6 @@ export default function Accounts(props) {
 
   const [tempUserInfo, setTempUserInfo] = useState(userInfo);
 
-  const stats = {
-    journalEntries: 47,
-    countriesVisited: 12,
-    totalDistance: '25,430',
-    favoriteSpots: 8,
-  };
 
   const handleSave = () => {
     setUserInfo(tempUserInfo);
