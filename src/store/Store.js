@@ -1,11 +1,40 @@
 // src/store/Store.js
 import { create } from 'zustand';
 import DatabaseService from '../services/DatabaseService';
+import { syncUnsyncedJournals } from '../services/SyncingJournals';
+import NetInfo from '@react-native-community/netinfo';
 
 export const useJournalStore = create((set, get) => ({
   journals: [],
   isLoading: false,
   error: null,
+  isSyncing: false,
+
+  // Helper function to check internet connectivity
+  checkInternetConnection: async () => {
+    const netInfo = await NetInfo.fetch();
+    return netInfo.isConnected && netInfo.isInternetReachable;
+  },
+
+  // Helper function to sync if connected
+  syncIfConnected: async () => {
+    try {
+      const isConnected = await get().checkInternetConnection();
+      if (isConnected) {
+        set({ isSyncing: true });
+        console.log("🔄 Auto-syncing journals...");
+        await syncUnsyncedJournals();
+        console.log("✅ Auto-sync completed");
+      } else {
+        console.log("📡 No internet connection - sync will happen when connection is restored");
+      }
+    } catch (error) {
+      console.error("❌ Auto-sync failed:", error);
+      // Don't throw error - allow the operation to complete even if sync fails
+    } finally {
+      set({ isSyncing: false });
+    }
+  },
 
   // Initialize database and load journals
   initializeStore: async () => {
@@ -20,7 +49,7 @@ export const useJournalStore = create((set, get) => ({
     }
   },
 
-  // Add a new journal entry
+  // Add a new journal entry with auto-sync
   addJournal: async (entry) => {
     set({ isLoading: true, error: null });
     try {
@@ -29,6 +58,7 @@ export const useJournalStore = create((set, get) => ({
         id: entry.id || Date.now().toString() + Math.random().toString(36).substr(2, 9)
       };
 
+      // Save to local database first
       await DatabaseService.addJournal(journalWithId);
 
       // Update local state
@@ -36,6 +66,9 @@ export const useJournalStore = create((set, get) => ({
         journals: [journalWithId, ...state.journals],
         isLoading: false
       }));
+
+      // Auto-sync to Supabase if connected
+      get().syncIfConnected();
 
       return journalWithId;
     } catch (error) {
@@ -45,10 +78,11 @@ export const useJournalStore = create((set, get) => ({
     }
   },
 
-  // Update an existing journal entry
+  // Update an existing journal entry with auto-sync
   updateJournal: async (updatedEntry) => {
     set({ isLoading: true, error: null });
     try {
+      // Save to local database first
       await DatabaseService.updateJournal(updatedEntry);
 
       // Update local state
@@ -58,6 +92,9 @@ export const useJournalStore = create((set, get) => ({
         ),
         isLoading: false
       }));
+
+      // Auto-sync to Supabase if connected
+      get().syncIfConnected();
     } catch (error) {
       console.error('Error updating journal:', error);
       set({ error: error.message, isLoading: false });
@@ -65,10 +102,11 @@ export const useJournalStore = create((set, get) => ({
     }
   },
 
-  // Remove a journal entry
+  // Remove a journal entry with auto-sync
   removeJournal: async (id) => {
     set({ isLoading: true, error: null });
     try {
+      // Delete from local database first
       await DatabaseService.deleteJournal(id);
 
       // Update local state
@@ -76,10 +114,29 @@ export const useJournalStore = create((set, get) => ({
         journals: state.journals.filter((journal) => journal.id !== id),
         isLoading: false
       }));
+
+      // Auto-sync to Supabase if connected
+      get().syncIfConnected();
     } catch (error) {
       console.error('Error removing journal:', error);
       set({ error: error.message, isLoading: false });
       throw error;
+    }
+  },
+
+  // Manual sync function
+  manualSync: async () => {
+    try {
+      set({ isSyncing: true });
+      await syncUnsyncedJournals();
+      // Refresh journals after sync to get updated sync status
+      await get().refreshJournals();
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      set({ error: error.message });
+      throw error;
+    } finally {
+      set({ isSyncing: false });
     }
   },
 
@@ -179,4 +236,7 @@ export const useJournalStore = create((set, get) => ({
 
   // Get error state
   getError: () => get().error,
+
+  // Get syncing state
+  getSyncingState: () => get().isSyncing,
 }));
