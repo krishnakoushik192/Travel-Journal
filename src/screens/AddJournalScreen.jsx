@@ -20,6 +20,7 @@ import {
 import NetInfo from '@react-native-community/netinfo';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ImagePicker from 'react-native-image-crop-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
 import { useJournalStore } from '../store/Store';
@@ -40,7 +41,7 @@ const colors = {
   textMuted: '#6B7B6B', // Muted green-gray
   tagBackground: '#F0F8F0', // Almost white with green tint
   shadow: '#2D5016', // Deep green shadow
-  overlay: 'rgba(0, 0, 0, 0.4)', // Deep green overlay
+  overlay: 'rgba(0, 0, 0, 0.4)', 
   white: '#FFFFFF',
   danger: '#C53030',
 };
@@ -62,6 +63,10 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   const [dateTime, setDateTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Date picker states
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   // NEW: store lat/lng
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
@@ -76,6 +81,15 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       setLatitude(journalToEdit.latitude ?? null);
       setLongitude(journalToEdit.longitude ?? null);
       setTags(Array.isArray(journalToEdit.tags) ? journalToEdit.tags : []);
+      
+      // Set the selected date from existing journal entry
+      if (journalToEdit.dateTime) {
+        // Parse the date from the stored format
+        const parsedDate = new Date(journalToEdit.dateTime);
+        if (!isNaN(parsedDate.getTime())) {
+          setSelectedDate(parsedDate);
+        }
+      }
     } else {
       detectLocation();
       updateDateTime();
@@ -157,8 +171,34 @@ const AddEditJournalScreen = ({ route, navigation }) => {
 
   const updateDateTime = () => {
     const now = new Date();
+    setSelectedDate(now);
     const formattedDate = now.toLocaleDateString();
     setDateTime(`${formattedDate}`);
+  };
+
+  const formatDate = (date) => {
+    const options = { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric'
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const handleDateChange = (event, date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (date) {
+      setSelectedDate(date);
+      setDateTime(formatDate(date));
+    }
+  };
+
+  const showDatePickerModal = () => {
+    setShowDatePicker(true);
   };
 
   const requestCameraPermission = async () => {
@@ -258,7 +298,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Validation Error', 'Please enter a title for your journal entry.');
+      Alert.alert('Title Required', 'Please enter a title for your journal entry.');
       return;
     }
     if (productImage.length === 0) {
@@ -277,7 +317,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         description,
         productImage,   // photos: array of urls inside
         locationName,   // "location"
-        dateTime,       // "date_time"
+        dateTime: formatDate(selectedDate),       // "date_time"
         latitude,
         longitude,
         tags: aiTags
@@ -410,10 +450,50 @@ const AddEditJournalScreen = ({ route, navigation }) => {
             <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.locationText}>{locationName}</Text>
           </View>
-          <View style={styles.locationRow}>
+          
+          <TouchableOpacity 
+            style={[styles.locationRow, styles.dateRow]} 
+            onPress={showDatePickerModal}
+            disabled={isSaving || isLoading}
+          >
             <MaterialCommunityIcons name="calendar-clock" size={20} color={colors.textPrimary} />
-            <Text style={styles.locationText}>{dateTime}</Text>
-          </View>
+            <Text style={styles.locationText}>{dateTime || formatDate(selectedDate)}</Text>
+            <View style={styles.dateEditIndicator}>
+              <MaterialCommunityIcons name="pencil" size={16} color={colors.secondary} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Date Picker */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+              maximumDate={new Date()} // Prevent future dates
+              style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+            />
+          )}
+
+          {Platform.OS === 'ios' && showDatePicker && (
+            <View style={styles.datePickerButtons}>
+              <TouchableOpacity 
+                style={[styles.dateButton, styles.cancelDateButton]}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.cancelDateText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.dateButton, styles.confirmDateButton]}
+                onPress={() => {
+                  setDateTime(formatDate(selectedDate));
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={styles.confirmDateText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[
@@ -501,7 +581,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
 
 export default AddEditJournalScreen;
 
-// Updated styles with green theme
+// Updated styles with green theme and date picker styles
 const styles = StyleSheet.create({
   background: {
     flex: 1,
@@ -577,11 +657,53 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
   },
+  dateRow: {
+    position: 'relative',
+  },
   locationText: {
     marginLeft: 8,
     color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '500',
+    flex: 1,
+  },
+  dateEditIndicator: {
+    marginLeft: 8,
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: colors.accent + '30',
+  },
+  iosDatePicker: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+  datePickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  dateButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  cancelDateButton: {
+    backgroundColor: colors.textMuted + '30',
+  },
+  confirmDateButton: {
+    backgroundColor: colors.primary,
+  },
+  cancelDateText: {
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  confirmDateText: {
+    color: colors.white,
+    fontWeight: '600',
   },
   imagePickerButton: {
     backgroundColor: colors.secondary,
