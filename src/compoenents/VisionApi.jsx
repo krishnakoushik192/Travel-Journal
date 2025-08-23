@@ -1,7 +1,7 @@
 import RNFS from 'react-native-fs';
 
 export const getImageTags = async (images) => {
-    console.log('Fetching tags for images:', images);
+  console.log('Fetching tags for images:', images);
   if (!images || images.length === 0) {
     console.log('No images provided for tagging');
     return [];
@@ -19,10 +19,10 @@ export const getImageTags = async (images) => {
 
       requests.push({
         image: { content: base64 },
-        features: [{ type: 'LABEL_DETECTION', maxResults: 5 }]
+        features: [{ type: 'LANDMARK_DETECTION', maxResults: 5 }]
       });
     } catch (err) {
-      console.log(`Error reading image file ${image.path}: ${err}`);
+      console.log(`Error reading image file ${image.url}: ${err}`);
     }
   }
 
@@ -38,13 +38,16 @@ export const getImageTags = async (images) => {
     const result = await response.json();
     console.log('Vision API response:', result);
 
-    // Extract tags from Vision API response
-    const tags = result.responses.map(res =>
-      res.labelAnnotations ? res.labelAnnotations.map(label => label.description) : []
+    // Store all landmarks per image in a clean list
+    const landmarksPerImage = result.responses.map(res =>
+      res.landmarkAnnotations
+        ? res.landmarkAnnotations.map(label => label.description)
+        : []
     );
-    console.log('Fetched tags:', tags);
 
-    return tags;
+    console.log('Landmarks per image:', landmarksPerImage);
+
+    return landmarksPerImage;
   } catch (err) {
     console.log('Error fetching tags:', err);
     return [];
