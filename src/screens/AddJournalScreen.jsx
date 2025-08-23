@@ -27,6 +27,24 @@ import { getImageTags } from '../compoenents/VisionApi';
 
 const { width, height } = Dimensions.get('window');
 
+// Theme colors
+const colors = {
+  primary: '#2D5016', // Deep forest green
+  secondary: '#4A7C59', // Medium forest green
+  accent: '#6B9080', // Sage green
+  background: '#A4C3A2', // Light sage
+  cardBackground: '#E8F5E8', // Very light mint
+  searchBackground: '#D4E7D4', // Light mint
+  textPrimary: '#1B3409', // Very dark green
+  textSecondary: '#4A5D4A', // Medium dark green
+  textMuted: '#6B7B6B', // Muted green-gray
+  tagBackground: '#F0F8F0', // Almost white with green tint
+  shadow: '#2D5016', // Deep green shadow
+  overlay: 'rgba(0, 0, 0, 0.4)', // Deep green overlay
+  white: '#FFFFFF',
+  danger: '#C53030',
+};
+
 const AddEditJournalScreen = ({ route, navigation }) => {
   const [internetAvailable, setInternetAvailable] = useState(false)
   const [tags, setTags] = useState([]); // holds AI tags (and/or extra)
@@ -102,7 +120,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           setLatitude(lat);
           setLongitude(lng);
 
-          const response =  await fetch(
+          const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             {
               headers: {
@@ -110,8 +128,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                 "Accept-Language": "en"
               }
             }
-          ) ;
-          const data =  await response.json();
+          );
+          const data = await response.json();
           console.log('Location Data:', data);
 
           if (data && data.address) {
@@ -315,12 +333,12 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           <Text style={styles.modalTitle}>Select Image Source</Text>
 
           <TouchableOpacity style={styles.optionButton} onPress={openCamera}>
-            <MaterialCommunityIcons name="camera" size={24} color="#333" />
+            <MaterialCommunityIcons name="camera" size={24} color={colors.textPrimary} />
             <Text style={styles.optionText}>Take Photo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.optionButton} onPress={openGallery}>
-            <MaterialCommunityIcons name="folder-image" size={24} color="#333" />
+            <MaterialCommunityIcons name="folder-image" size={24} color={colors.textPrimary} />
             <Text style={styles.optionText}>Browse All Photos</Text>
           </TouchableOpacity>
 
@@ -328,8 +346,8 @@ const AddEditJournalScreen = ({ route, navigation }) => {
             style={[styles.optionButton, styles.cancelButton]}
             onPress={() => setShowImageOptions(false)}
           >
-            <MaterialCommunityIcons name="close" size={24} color="#666" />
-            <Text style={[styles.optionText, { color: '#666' }]}>Cancel</Text>
+            <MaterialCommunityIcons name="close" size={24} color={colors.textMuted} />
+            <Text style={[styles.optionText, { color: colors.textMuted }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -340,7 +358,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
     <Modal visible={isSaving || isLoading} transparent={true} animationType="fade">
       <View style={styles.loadingOverlay}>
         <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>
             {isEditMode ? 'Updating journal entry...' : 'Saving journal entry...'}
           </Text>
@@ -355,7 +373,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
       {isEditMode ? (
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Journal</Text>
         </View>
@@ -363,7 +381,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
         <Header />
       )}
 
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
           <Text style={styles.header}>
             {isEditMode ? 'Edit Journal Entry' : 'Add New Journal Entry'}
@@ -372,7 +390,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Title"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={colors.textMuted}
             value={title}
             onChangeText={setTitle}
             editable={!isSaving && !isLoading}
@@ -381,7 +399,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Description"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={colors.textMuted}
             multiline
             value={description}
             onChangeText={setDescription}
@@ -389,11 +407,11 @@ const AddEditJournalScreen = ({ route, navigation }) => {
           />
 
           <View style={styles.locationRow}>
-            <MaterialCommunityIcons name="map-marker-outline" size={20} color="#fff" />
+            <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.locationText}>{locationName}</Text>
           </View>
           <View style={styles.locationRow}>
-            <MaterialCommunityIcons name="calendar-clock" size={20} color="#fff" />
+            <MaterialCommunityIcons name="calendar-clock" size={20} color={colors.textPrimary} />
             <Text style={styles.locationText}>{dateTime}</Text>
           </View>
 
@@ -408,7 +426,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
             <MaterialCommunityIcons
               name="camera-plus"
               size={20}
-              color={(productImage.length >= 5 || isSaving || isLoading) ? "#999" : "#fff"}
+              color={(productImage.length >= 5 || isSaving || isLoading) ? colors.textMuted : colors.white}
               style={{ marginRight: 8 }}
             />
             <Text
@@ -436,14 +454,14 @@ const AddEditJournalScreen = ({ route, navigation }) => {
                     onPress={() => removeImage(index)}
                     disabled={isSaving || isLoading}
                   >
-                    <MaterialCommunityIcons name="close-circle" size={20} color="#ff4444" />
+                    <MaterialCommunityIcons name="close-circle" size={20} color={colors.danger} />
                   </TouchableOpacity>
                 </View>
               )}
             />
           ) : (
             <View style={styles.noImageContainer}>
-              <MaterialCommunityIcons name="camera-off" size={40} color="#999" />
+              <MaterialCommunityIcons name="camera-off" size={40} color={colors.textMuted} />
               <Text style={styles.noImageText}>
                 At least 1 photo is required for your journal entry
               </Text>
@@ -459,7 +477,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
             disabled={productImage.length === 0 || isSaving || isLoading}
           >
             {(isSaving || isLoading) ? (
-              <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+              <ActivityIndicator size="small" color={colors.white} style={{ marginRight: 8 }} />
             ) : null}
             <Text
               style={[
@@ -483,7 +501,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
 
 export default AddEditJournalScreen;
 
-// styles (UNCHANGED from your code)
+// Updated styles with green theme
 const styles = StyleSheet.create({
   background: {
     flex: 1,
@@ -493,7 +511,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: colors.overlay,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -505,13 +523,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.secondary + '50', // 50% opacity
     marginRight: 16,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.5,
   },
   container: {
@@ -522,19 +540,27 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 25,
-    color: '#fff',
+    color: colors.white,
     textAlign: 'center',
+    textShadowColor: colors.shadow,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: colors.cardBackground + 'E6', // 90% opacity
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 12,
     marginBottom: 18,
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: colors.accent + '50', // 50% opacity
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   textArea: {
     height: 100,
@@ -544,16 +570,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-    paddingHorizontal: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.cardBackground + 'CC', // 80% opacity
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
   },
   locationText: {
     marginLeft: 8,
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '500',
   },
   imagePickerButton: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: colors.secondary,
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -561,11 +592,16 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     flexDirection: 'row',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 2,
+    borderColor: colors.accent,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
   imagePickerText: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -580,97 +616,102 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 3,
+    borderColor: colors.accent,
   },
   removeButton: {
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.primary,
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    elevation: 6,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
     flexDirection: 'row',
+    borderWidth: 2,
+    borderColor: colors.secondary,
   },
   saveText: {
     fontWeight: '700',
     fontSize: 18,
-    color: '#fff',
+    color: colors.white,
   },
   imagePickerButtonDisabled: {
-    backgroundColor: 'rgba(150,150,150,0.25)',
-    borderColor: 'rgba(150,150,150,0.3)',
+    backgroundColor: colors.textMuted + '50', // 50% opacity
+    borderColor: colors.textMuted + '30', // 30% opacity
   },
   imagePickerTextDisabled: {
-    color: '#999',
+    color: colors.textMuted,
   },
   noImageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: colors.tagBackground,
     borderRadius: 12,
     paddingVertical: 30,
     paddingHorizontal: 20,
     marginBottom: 15,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#999',
+    borderColor: colors.textMuted,
   },
   noImageText: {
-    color: '#ccc',
+    color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     marginTop: 10,
     fontStyle: 'italic',
   },
   saveButtonDisabled: {
-    backgroundColor: '#888',
+    backgroundColor: colors.textMuted,
     opacity: 0.6,
+    borderColor: colors.textMuted + '50', // 50% opacity
   },
   saveTextDisabled: {
-    color: '#ccc',
+    color: colors.textMuted + 'CC', // 80% opacity
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 20,
     padding: 25,
     width: width * 0.85,
     maxWidth: 320,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    elevation: 10,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.accent + '30', // 30% opacity
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 25,
-    color: '#333',
+    color: colors.textPrimary,
   },
   optionButton: {
     flexDirection: 'row',
@@ -679,38 +720,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 12,
     marginBottom: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.tagBackground,
+    borderWidth: 1,
+    borderColor: colors.accent + '30', // 30% opacity
   },
   cancelButton: {
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopWidth: 2,
+    borderTopColor: colors.accent + '30', // 30% opacity
     marginTop: 15,
     paddingTop: 20,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.searchBackground,
   },
   optionText: {
     fontSize: 17,
     marginLeft: 15,
-    color: '#333',
+    color: colors.textPrimary,
     fontWeight: '600',
   },
   loadingOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     minWidth: 200,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#333',
+    color: colors.textPrimary,
     textAlign: 'center',
     fontWeight: '500',
   },

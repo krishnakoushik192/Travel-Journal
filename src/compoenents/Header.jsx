@@ -35,10 +35,16 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 26,
         fontWeight: 'bold',
+        textShadowColor: '#2D5016',
+        textShadowOffset: { width: 2, height: 2 },
+        textShadowRadius: 2,
     },
     subtitle: {
         color: '#ffffff',
         fontSize: 14,
+        textShadowColor: '#2D5016',
+        textShadowOffset: { width: 2, height: 2 },
+        textShadowRadius: 2,
     },
 })
 
