@@ -19,7 +19,7 @@ export const getImageTags = async (images) => {
 
       requests.push({
         image: { content: base64 },
-        features: [{ type: 'LANDMARK_DETECTION', maxResults: 5 }]
+        features: [{ type: 'LANDMARK_DETECTION', maxResults: 5 }, { type: 'LABEL_DETECTION', maxResults: 5 }]
       });
     } catch (err) {
       console.log(`Error reading image file ${image.url}: ${err}`);
@@ -38,12 +38,15 @@ export const getImageTags = async (images) => {
     const result = await response.json();
     console.log('Vision API response:', result);
 
-    // Store all landmarks per image in a clean list
-    const landmarksPerImage = result.responses.map(res =>
-      res.landmarkAnnotations
-        ? res.landmarkAnnotations.map(label => label.description)
-        : []
-    );
+    const landmarksPerImage = result.responses.map(res => {
+      if (res.landmarkAnnotations && res.landmarkAnnotations.length > 0) {
+        return res.landmarkAnnotations.map(label => label.description);
+      } else if (res.labelAnnotations && res.labelAnnotations.length > 0) {
+        return res.labelAnnotations.map(label => label.description);
+      } else {
+        return []; // no results at all
+      }
+    });
 
     console.log('Landmarks per image:', landmarksPerImage);
 

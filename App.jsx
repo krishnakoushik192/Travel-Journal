@@ -7,6 +7,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useJournalStore } from './src/store/Store';
 import NetInfo from '@react-native-community/netinfo';
 import NoInternetConnection from './src/compoenents/NoInternetConnection';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 function App() {
@@ -25,11 +26,13 @@ function App() {
   }, []);
 
   return (
-    <NavigationContainer>
-      <StatusBar hidden={true} />
-      <NoInternetConnection isConnected={internetAvailable} />
-      <StackNavigator />
-    </NavigationContainer>
+    <GestureHandlerRootView>
+      <NavigationContainer>
+        <StatusBar hidden={true} />
+        <NoInternetConnection isConnected={internetAvailable} />
+        <StackNavigator />
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }
 

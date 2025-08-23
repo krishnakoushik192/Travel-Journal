@@ -15,7 +15,6 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
-  NativeModules,
   ScrollView
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -30,7 +29,6 @@ const { width, height } = Dimensions.get('window');
 
 const AddEditJournalScreen = ({ route, navigation }) => {
   const [internetAvailable, setInternetAvailable] = useState(false)
-  const { ImageTagger } = NativeModules;
   const [tags, setTags] = useState([]); // holds AI tags (and/or extra)
   const { addJournal, updateJournal, isLoading } = useJournalStore();
 
@@ -142,8 +140,7 @@ const AddEditJournalScreen = ({ route, navigation }) => {
   const updateDateTime = () => {
     const now = new Date();
     const formattedDate = now.toLocaleDateString();
-    const formattedTime = now.toLocaleTimeString();
-    setDateTime(`${formattedDate} ${formattedTime}`);
+    setDateTime(`${formattedDate}`);
   };
 
   const requestCameraPermission = async () => {

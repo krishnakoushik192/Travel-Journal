@@ -7,16 +7,35 @@ import {
   Image,
   Pressable,
   ImageBackground,
-  Alert,
   Modal,
   Dimensions,
-  PanResponder,
   Animated,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useJournalStore } from '../store/Store';
 
 const { width, height } = Dimensions.get('window');
+
+// Responsive breakpoints
+const isTablet = width >= 768;
+const isSmallScreen = width < 375;
+
+// Responsive scaling functions
+const scale = (size) => {
+  const baseWidth = 375;
+  return Math.round((size * width) / baseWidth);
+};
+
+const verticalScale = (size) => {
+  const baseHeight = 812;
+  return Math.round((size * height) / baseHeight);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
 
 // Same color palette as previous screens
 const colors = {
@@ -35,13 +54,15 @@ const colors = {
   white: '#FFFFFF',
   danger: '#C53030',
   favorite: '#E53E3E',
-  modalBackground: 'rgba(0, 0, 0, 0.9)',
+  modalBackground: 'rgba(0, 0, 0, 0.5)', // Dark overlay for modal background
+  modalCard: '#E8F5E8', // Light mint for modal card
 };
 
 export default function JournalDetails({ route, navigation }) {
   const { removeJournal } = useJournalStore();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
   // Animation values for carousel
@@ -50,33 +71,28 @@ export default function JournalDetails({ route, navigation }) {
 
   // Get journal data from navigation params
   const journal = route?.params?.journal;
-  console.log(journal);
 
   // Calculate responsive dimensions
-  const imageHeight = Math.min(height * 0.3, 250);
-  const carouselItemWidth = width - 32; // Account for padding
-  const thumbnailSize = Math.min(60, width * 0.15);
+  const imageHeight = isTablet ? verticalScale(200) : verticalScale(180);
+  const carouselItemWidth = width - (isTablet ? 64 : 32);
+  const thumbnailSize = isTablet ? 80 : moderateScale(60);
 
   const handleEdit = () => {
     navigation?.navigate('EditJournal', { journal });
   };
 
-  const handleDelete = (id) => {
-    Alert.alert(
-      'Delete Journal Entry',
-      'Are you sure you want to delete this journal entry? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            removeJournal(id);
-            navigation?.goBack();
-          }
-        }
-      ]
-    );
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    removeJournal(journal.id);
+    setShowDeleteModal(false);
+    navigation?.goBack();
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   const openImageModal = (index) => {
@@ -140,7 +156,11 @@ export default function JournalDetails({ route, navigation }) {
     if (!journal.productImage || journal.productImage.length === 0) {
       return (
         <View style={[styles.noImageContainer, { height: imageHeight }]}>
-          <MaterialCommunityIcons name="camera-off" size={40} color={colors.textMuted} />
+          <MaterialCommunityIcons
+            name="camera-off"
+            size={moderateScale(40)}
+            color={colors.textMuted}
+          />
           <Text style={styles.noImageText}>No images available</Text>
         </View>
       );
@@ -173,7 +193,7 @@ export default function JournalDetails({ route, navigation }) {
               <View style={styles.expandIcon}>
                 <MaterialCommunityIcons
                   name="magnify-plus-outline"
-                  size={20}
+                  size={moderateScale(20)}
                   color={colors.white}
                 />
               </View>
@@ -219,7 +239,7 @@ export default function JournalDetails({ route, navigation }) {
                   <View style={styles.activeThumbnailOverlay}>
                     <MaterialCommunityIcons
                       name="check-circle"
-                      size={Math.min(16, thumbnailSize * 0.25)}
+                      size={moderateScale(16)}
                       color={colors.primary}
                     />
                   </View>
@@ -232,6 +252,52 @@ export default function JournalDetails({ route, navigation }) {
     );
   };
 
+  const renderDeleteModal = () => (
+    <Modal
+      visible={showDeleteModal}
+      transparent
+      animationType="fade"
+      onRequestClose={cancelDelete}
+    >
+      <View style={styles.deleteModalOverlay}>
+        <View style={styles.deleteModalCard}>
+          <View style={styles.deleteModalHeader}>
+            <MaterialCommunityIcons
+              name="delete-alert-outline"
+              size={moderateScale(48)}
+              color={colors.danger}
+            />
+            <Text style={styles.deleteModalTitle}>Delete Journal Entry</Text>
+            <Text style={styles.deleteModalMessage}>
+              Are you sure you want to delete this journal entry? This action cannot be undone.
+            </Text>
+          </View>
+
+          <View style={styles.deleteModalActions}>
+            <Pressable
+              style={styles.cancelButton}
+              onPress={cancelDelete}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.confirmDeleteButton}
+              onPress={confirmDelete}
+            >
+              <MaterialCommunityIcons
+                name="delete"
+                size={moderateScale(18)}
+                color={colors.white}
+              />
+              <Text style={styles.confirmDeleteButtonText}>Delete</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderImageModal = () => (
     <Modal
       visible={showImageModal}
@@ -240,28 +306,39 @@ export default function JournalDetails({ route, navigation }) {
       onRequestClose={closeImageModal}
       statusBarTranslucent
     >
+      <StatusBar backgroundColor="rgba(0,0,0,0.9)" barStyle="light-content" />
       <View style={styles.modalOverlay}>
         {/* Header */}
-        <View style={styles.modalHeader}>
-          <Pressable onPress={closeImageModal} style={styles.closeButton}>
-            <MaterialCommunityIcons name="close" size={28} color={colors.white} />
-          </Pressable>
-          <Text style={styles.modalTitle}>
-            {selectedImageIndex + 1} of {journal.productImage?.length || 0}
-          </Text>
-          <View style={styles.modalHeaderSpacer} />
-        </View>
+        <SafeAreaView style={styles.modalHeaderContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={closeImageModal} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={moderateScale(24)} color={colors.white} />
+            </Pressable>
+            <Text style={styles.modalTitle}>
+              {selectedImageIndex + 1} of {journal.productImage?.length || 0}
+            </Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+        </SafeAreaView>
 
         {/* Image viewer */}
         <View style={styles.imageViewerContainer}>
           {journal.productImage && journal.productImage[selectedImageIndex] && (
-            <View style={styles.fullScreenImageContainer}>
-              <Image
-                source={{ uri: journal.productImage[selectedImageIndex].url }}
-                style={styles.fullScreenImage}
-                resizeMode="contain"
-              />
-            </View>
+            <ScrollView
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.imageScrollContainer}
+            >
+              <View style={styles.fullScreenImageContainer}>
+                <Image
+                  source={{ uri: journal.productImage[selectedImageIndex].url }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </ScrollView>
           )}
         </View>
 
@@ -275,7 +352,7 @@ export default function JournalDetails({ route, navigation }) {
               >
                 <MaterialCommunityIcons
                   name="chevron-left"
-                  size={32}
+                  size={moderateScale(32)}
                   color={colors.white}
                 />
               </Pressable>
@@ -288,7 +365,7 @@ export default function JournalDetails({ route, navigation }) {
               >
                 <MaterialCommunityIcons
                   name="chevron-right"
-                  size={32}
+                  size={moderateScale(32)}
                   color={colors.white}
                 />
               </Pressable>
@@ -298,7 +375,7 @@ export default function JournalDetails({ route, navigation }) {
 
         {/* Bottom indicator dots */}
         {journal.productImage && journal.productImage.length > 1 && (
-          <View style={styles.indicatorContainer}>
+          <SafeAreaView style={styles.indicatorContainer}>
             {journal.productImage.map((_, index) => (
               <Pressable
                 key={index}
@@ -309,22 +386,8 @@ export default function JournalDetails({ route, navigation }) {
                 ]}
               />
             ))}
-          </View>
+          </SafeAreaView>
         )}
-
-        {/* Swipe gestures for touch navigation */}
-        <View style={styles.swipeOverlay} pointerEvents="box-none">
-          {/* Left swipe area */}
-          <Pressable
-            style={styles.leftSwipeArea}
-            onPress={navigateToPrevImage}
-          />
-          {/* Right swipe area */}
-          <Pressable
-            style={styles.rightSwipeArea}
-            onPress={navigateToNextImage}
-          />
-        </View>
       </View>
     </Modal>
   );
@@ -344,19 +407,21 @@ export default function JournalDetails({ route, navigation }) {
     >
       <View style={styles.overlay}>
         {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation?.goBack()}
-            style={styles.backButton}
-          >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={24}
-              color={colors.white}
-            />
-          </Pressable>
-          <Text style={styles.headerTitle}>Journal Detail</Text>
-        </View>
+        <SafeAreaView>
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => navigation?.goBack()}
+              style={styles.backButton}
+            >
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={moderateScale(24)}
+                color={colors.white}
+              />
+            </Pressable>
+            <Text style={styles.headerTitle}>Journal Detail</Text>
+          </View>
+        </SafeAreaView>
 
         <ScrollView
           style={styles.scrollView}
@@ -380,7 +445,7 @@ export default function JournalDetails({ route, navigation }) {
               <View style={styles.locationContainer}>
                 <MaterialCommunityIcons
                   name="map-marker"
-                  size={16}
+                  size={moderateScale(16)}
                   color={colors.textMuted}
                 />
                 <Text style={styles.location} numberOfLines={3}>{journal.locationName}</Text>
@@ -400,10 +465,8 @@ export default function JournalDetails({ route, navigation }) {
                   <Text style={styles.tagsTitle}>Tags</Text>
                   <View style={styles.tagsWrapper}>
                     {journal.tags.map((tag, index) => {
-                      // Add safety checks to prevent errors
                       if (!tag) return null;
 
-                      // Convert to string if it's not already
                       const tagString = typeof tag === 'string' ? tag : String(tag);
 
                       return (
@@ -413,7 +476,6 @@ export default function JournalDetails({ route, navigation }) {
                           </View>
                           <View style={styles.tagsList}>
                             {tagString.split(',').map((singleTag, tagIndex) => {
-                              // Trim whitespace and check if tag is not empty
                               const trimmedTag = singleTag.trim();
                               if (!trimmedTag) return null;
 
@@ -438,7 +500,7 @@ export default function JournalDetails({ route, navigation }) {
             <Pressable style={styles.editButton} onPress={handleEdit}>
               <MaterialCommunityIcons
                 name="pencil"
-                size={20}
+                size={moderateScale(20)}
                 color={colors.white}
               />
               <Text style={styles.editButtonText}>Edit Journal</Text>
@@ -446,11 +508,11 @@ export default function JournalDetails({ route, navigation }) {
 
             <Pressable
               style={styles.deleteButton}
-              onPress={() => handleDelete(journal.id)}
+              onPress={handleDelete}
             >
               <MaterialCommunityIcons
                 name="delete-outline"
-                size={20}
+                size={moderateScale(20)}
                 color={colors.danger}
               />
               <Text style={styles.deleteButtonText}>Delete Journal</Text>
@@ -460,6 +522,9 @@ export default function JournalDetails({ route, navigation }) {
 
         {/* Image Modal */}
         {renderImageModal()}
+
+        {/* Delete Confirmation Modal */}
+        {renderDeleteModal()}
       </View>
     </ImageBackground>
   );
@@ -473,22 +538,22 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: colors.overlay,
+    padding: moderateScale(7),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: 50,
+    paddingHorizontal: moderateScale(16),
+    paddingVertical: verticalScale(16),
   },
   backButton: {
-    padding: 8,
-    borderRadius: 12,
+    padding: moderateScale(8),
+    borderRadius: moderateScale(12),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginRight: 16,
+    marginRight: moderateScale(16),
   },
   headerTitle: {
-    fontSize: Math.min(20, width * 0.05),
+    fontSize: moderateScale(20),
     fontWeight: '700',
     color: colors.white,
     letterSpacing: 0.5,
@@ -497,12 +562,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: moderateScale(16),
+    paddingBottom: verticalScale(32),
   },
   mainCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 20,
+    borderRadius: moderateScale(20),
     overflow: 'hidden',
     shadowColor: colors.shadow,
     shadowOffset: {
@@ -512,7 +577,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    marginBottom: 24,
+    marginBottom: verticalScale(24),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
@@ -538,24 +603,24 @@ const styles = StyleSheet.create({
   },
   expandIcon: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: moderateScale(12),
+    right: moderateScale(12),
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 20,
-    padding: 8,
+    borderRadius: moderateScale(20),
+    padding: moderateScale(8),
   },
   imageCounter: {
     position: 'absolute',
-    top: 12,
-    left: 12,
+    top: moderateScale(12),
+    left: moderateScale(12),
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: moderateScale(16),
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateScale(6),
   },
   imageCountText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '600',
   },
 
@@ -564,34 +629,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: verticalScale(12),
     backgroundColor: colors.searchBackground,
-    gap: 6,
+    gap: moderateScale(6),
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: moderateScale(8),
+    height: moderateScale(8),
+    borderRadius: moderateScale(4),
     backgroundColor: 'rgba(45, 80, 22, 0.3)',
   },
   activeDot: {
     backgroundColor: colors.primary,
-    width: 20,
+    width: moderateScale(20),
   },
 
   // Thumbnail strip
   thumbnailStrip: {
     backgroundColor: colors.searchBackground,
-    paddingVertical: 8,
+    paddingVertical: verticalScale(8),
   },
   thumbnailContainer: {
-    paddingHorizontal: 12,
-    gap: 8,
+    paddingHorizontal: moderateScale(12),
+    gap: moderateScale(8),
     alignItems: 'center',
   },
   thumbnailWrapper: {
     position: 'relative',
-    borderRadius: 8,
+    borderRadius: moderateScale(8),
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -600,121 +665,121 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   thumbnail: {
-    borderRadius: 6,
+    borderRadius: moderateScale(6),
   },
   activeThumbnailOverlay: {
     position: 'absolute',
     bottom: 2,
     right: 2,
     backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 2,
+    borderRadius: moderateScale(12),
+    padding: moderateScale(2),
   },
 
   // Content styles
   contentContainer: {
-    padding: Math.max(16, width * 0.04),
+    padding: moderateScale(16),
   },
   title: {
-    fontSize: Math.min(24, width * 0.06),
+    fontSize: moderateScale(24),
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: verticalScale(8),
     letterSpacing: 0.5,
-    lineHeight: Math.min(30, width * 0.075),
+    lineHeight: moderateScale(30),
   },
   dateTime: {
-    fontSize: Math.min(14, width * 0.035),
+    fontSize: moderateScale(14),
     color: colors.textMuted,
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
     fontWeight: '500',
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 20,
-    gap: 4,
-    paddingHorizontal: 8,
+    marginBottom: verticalScale(20),
+    gap: moderateScale(4),
+    paddingHorizontal: moderateScale(8),
   },
   location: {
-    fontSize: Math.min(14, width * 0.035),
+    fontSize: moderateScale(14),
     color: colors.textMuted,
     fontWeight: '500',
     flex: 1,
-    lineHeight: 20,
+    lineHeight: moderateScale(20),
   },
   descriptionContainer: {
-    marginTop: 8,
+    marginTop: verticalScale(8),
   },
   descriptionTitle: {
-    fontSize: Math.min(18, width * 0.045),
+    fontSize: moderateScale(18),
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
     letterSpacing: 0.3,
   },
   description: {
-    fontSize: Math.min(16, width * 0.04),
+    fontSize: moderateScale(16),
     color: colors.textSecondary,
-    lineHeight: Math.min(24, width * 0.06),
+    lineHeight: moderateScale(24),
     fontWeight: '400',
   },
 
   // Tags styles
   tagsContainer: {
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   tagsTitle: {
-    fontSize: Math.min(18, width * 0.045),
+    fontSize: moderateScale(18),
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
     letterSpacing: 0.3,
   },
   tagsWrapper: {
-    gap: 12,
+    gap: verticalScale(12),
   },
   tagGroup: {
     backgroundColor: colors.tagBackground,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: moderateScale(12),
+    padding: moderateScale(12),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   tagHeader: {
-    marginBottom: 8,
+    marginBottom: verticalScale(8),
   },
   tagIndexText: {
-    fontSize: Math.min(14, width * 0.035),
+    fontSize: moderateScale(14),
     fontWeight: '600',
     color: colors.textPrimary,
   },
   tagsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: moderateScale(6),
   },
   tag: {
     backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    borderRadius: moderateScale(16),
+    paddingVertical: verticalScale(4),
+    paddingHorizontal: moderateScale(10),
   },
   tagText: {
     color: colors.white,
-    fontSize: Math.min(12, width * 0.03),
+    fontSize: moderateScale(12),
     fontWeight: '500',
   },
 
   // Action buttons
   actionsContainer: {
-    gap: 12,
+    gap: verticalScale(12),
   },
   editButton: {
     backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    borderRadius: moderateScale(16),
+    paddingVertical: verticalScale(16),
+    paddingHorizontal: moderateScale(24),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -723,29 +788,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
-    gap: 8,
+    gap: moderateScale(8),
   },
   editButtonText: {
     color: colors.white,
-    fontSize: Math.min(16, width * 0.04),
+    fontSize: moderateScale(16),
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   deleteButton: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    borderRadius: moderateScale(16),
+    paddingVertical: verticalScale(16),
+    paddingHorizontal: moderateScale(24),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.danger,
-    gap: 8,
+    gap: moderateScale(8),
   },
   deleteButtonText: {
     color: colors.danger,
-    fontSize: Math.min(16, width * 0.04),
+    fontSize: moderateScale(16),
     fontWeight: '600',
     letterSpacing: 0.5,
   },
@@ -759,105 +824,177 @@ const styles = StyleSheet.create({
   },
   noImageText: {
     color: colors.textMuted,
-    fontSize: Math.min(14, width * 0.035),
-    marginTop: 8,
+    fontSize: moderateScale(14),
+    marginTop: verticalScale(8),
     fontStyle: 'italic',
   },
 
-  // Modal styles
-  modalOverlay: {
+  // Delete Modal styles
+  deleteModalOverlay: {
     flex: 1,
     backgroundColor: colors.modalBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(24),
+  },
+  deleteModalCard: {
+    backgroundColor: colors.modalCard,
+    borderRadius: moderateScale(20),
+    padding: moderateScale(24),
+    width: '100%',
+    maxWidth: isTablet ? 400 : width - 48,
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: verticalScale(24),
+  },
+  deleteModalTitle: {
+    fontSize: moderateScale(20),
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: verticalScale(16),
+    marginBottom: verticalScale(8),
+    textAlign: 'center',
+  },
+  deleteModalMessage: {
+    fontSize: moderateScale(16),
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: moderateScale(22),
+  },
+  deleteModalActions: {
+    flexDirection: isSmallScreen ? 'column' : 'row',
+    gap: moderateScale(12),
+    justifyContent: 'space-between',
+  },
+  cancelButton: {
+    flex: isSmallScreen ? undefined : 1,
+    backgroundColor: colors.searchBackground,
+    borderRadius: moderateScale(12),
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: moderateScale(20),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.textMuted,
+  },
+  cancelButtonText: {
+    color: colors.textPrimary,
+    fontSize: moderateScale(16),
+    fontWeight: '600',
+  },
+  confirmDeleteButton: {
+    flex: isSmallScreen ? undefined : 1,
+    backgroundColor: colors.danger,
+    borderRadius: moderateScale(12),
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: moderateScale(20),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: moderateScale(8),
+  },
+  confirmDeleteButtonText: {
+    color: colors.white,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
+  },
+
+  // Image Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)', // Changed to pure black for better image viewing
+  },
+  modalHeaderContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: moderateScale(20),
+    paddingVertical: verticalScale(15),
     zIndex: 20,
   },
   closeButton: {
-    padding: 8,
-    borderRadius: 20,
+    padding: moderateScale(8),
+    borderRadius: moderateScale(20),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     zIndex: 30,
   },
   modalTitle: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
   },
   modalHeaderSpacer: {
-    width: 44, // Same width as close button for centering
+    width: moderateScale(44),
   },
   imageViewerContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  fullScreenImageContainer: {
-    width: width,
-    height: height * 0.7,
+  imageScrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fullScreenImageContainer: {
+    width: width,
+    height: height * 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(20),
+  },
   fullScreenImage: {
-    width: width - 40,
-    height: height * 0.7,
-    maxWidth: '100%',
-    maxHeight: '100%',
+    width: '100%',
+    height: '100%',
+    maxWidth: width - 40,
+    maxHeight: height * 0.8,
   },
   navArrow: {
     position: 'absolute',
-    top: height / 2 - 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 25,
-    padding: 12,
+    top: '50%',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: moderateScale(30),
+    padding: moderateScale(12),
     zIndex: 15,
+    marginTop: -moderateScale(30),
   },
   leftArrow: {
-    left: 20,
+    left: moderateScale(20),
   },
   rightArrow: {
-    right: 20,
-  },
-  swipeOverlay: {
-    position: 'absolute',
-    top: 100, // Start below the header
-    left: 0,
-    right: 0,
-    bottom: 80, // End above the indicators
-    flexDirection: 'row',
-    zIndex: 5,
-  },
-  leftSwipeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  rightSwipeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
+    right: moderateScale(20),
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    gap: 8,
+    paddingVertical: verticalScale(20),
+    gap: moderateScale(8),
     zIndex: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: moderateScale(10),
+    height: moderateScale(10),
+    borderRadius: moderateScale(5),
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   activeIndicator: {
     backgroundColor: colors.white,
-    width: 24,
+    width: moderateScale(30),
+    height: moderateScale(10),
+    borderRadius: moderateScale(5),
   },
 
   // Error state
@@ -866,10 +1003,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    paddingHorizontal: moderateScale(24),
   },
   errorText: {
-    fontSize: Math.min(18, width * 0.045),
+    fontSize: moderateScale(18),
     color: colors.textPrimary,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
