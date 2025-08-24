@@ -128,27 +128,6 @@ const JournalCard = ({ nav, item }) => {
     };
 
     // Render right action (delete button)
-    const renderRightAction = () => {
-        return (
-            <View style={styles.deleteActionContainer}>
-                <Pressable
-                    onPress={handleDeletePress}
-                    style={({ pressed }) => [
-                        styles.deleteButton,
-                        pressed && styles.deleteButtonPressed
-                    ]}
-                >
-                    <MaterialCommunityIcons
-                        name="trash-can-outline"
-                        size={24}
-                        color={colors.white}
-                    />
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                </Pressable>
-            </View>
-        );
-    };
-
     const renderDeleteModal = () => {
         return (
             <DeleteConfirmationModal
@@ -178,6 +157,11 @@ const JournalCard = ({ nav, item }) => {
             />
         );
     };
+    const onSwipeOpen = () => {
+        setShowDeleteModal(true);
+        // close the swipe right away so card resets
+        swipeableRef.current?.close();
+    };
     // Safe render function
     const renderCard = () => {
         try {
@@ -185,7 +169,7 @@ const JournalCard = ({ nav, item }) => {
                 <>
                     <Swipeable
                         ref={swipeableRef}
-                        renderRightActions={renderRightAction}
+                        onSwipeableOpen={onSwipeOpen}
                         rightThreshold={40}
                         friction={2}
                     >
