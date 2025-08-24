@@ -5,6 +5,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useJournalStore } from '../store/Store';
 import colors from './Colors';
 import ImageCarousel from './Carousel';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -148,86 +149,35 @@ const JournalCard = ({ nav, item }) => {
         );
     };
 
-    // Render delete confirmation modal
     const renderDeleteModal = () => {
         return (
-            <Modal
-                animationType="fade"
-                transparent={true}
+            <DeleteConfirmationModal
                 visible={showDeleteModal}
-                onRequestClose={handleDeleteCancel}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalHeader}>
+                onConfirm={handleDeleteConfirm}
+                onCancel={handleDeleteCancel}
+                title="Delete Journal Entry"
+                message={`Are you sure you want to delete "${item?.title || 'Untitled Entry'}"?`}
+                // Custom message with journal preview
+                customContent={
+                    <View style={styles.modalPreview}>
+                        <Text style={styles.modalPreviewTitle} numberOfLines={1}>
+                            "{item?.title || 'Untitled Entry'}"
+                        </Text>
+                        <View style={styles.modalPreviewMeta}>
                             <MaterialCommunityIcons
-                                name="trash-can-outline"
-                                size={32}
-                                color={colors.danger}
+                                name="calendar-outline"
+                                size={14}
+                                color={colors.textMuted}
                             />
-                            <Text style={styles.modalTitle}>Delete Journal Entry</Text>
-                        </View>
-
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalMessage}>
-                                Are you sure you want to delete this journal entry?
+                            <Text style={styles.modalPreviewDate}>
+                                {item?.dateTime || 'No date'}
                             </Text>
-                            <Text style={styles.modalSubmessage}>
-                                This action cannot be undone and all associated data will be permanently removed.
-                            </Text>
-
-                            {/* Show journal preview */}
-                            <View style={styles.modalPreview}>
-                                <Text style={styles.modalPreviewTitle} numberOfLines={1}>
-                                    "{item?.title || 'Untitled Entry'}"
-                                </Text>
-                                <View style={styles.modalPreviewMeta}>
-                                    <MaterialCommunityIcons
-                                        name="calendar-outline"
-                                        size={14}
-                                        color={colors.textMuted}
-                                    />
-                                    <Text style={styles.modalPreviewDate}>
-                                        {item?.dateTime || 'No date'}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.modalActions}>
-                            <Pressable
-                                onPress={handleDeleteCancel}
-                                style={({ pressed }) => [
-                                    styles.modalButton,
-                                    styles.modalCancelButton,
-                                    pressed && styles.modalButtonPressed
-                                ]}
-                            >
-                                <Text style={styles.modalCancelText}>Cancel</Text>
-                            </Pressable>
-
-                            <Pressable
-                                onPress={handleDeleteConfirm}
-                                style={({ pressed }) => [
-                                    styles.modalButton,
-                                    styles.modalDeleteButton,
-                                    pressed && styles.modalButtonPressed
-                                ]}
-                            >
-                                <MaterialCommunityIcons
-                                    name="trash-can"
-                                    size={18}
-                                    color={colors.white}
-                                />
-                                <Text style={styles.modalDeleteText}>Delete</Text>
-                            </Pressable>
                         </View>
                     </View>
-                </View>
-            </Modal>
+                }
+            />
         );
     };
-
     // Safe render function
     const renderCard = () => {
         try {
@@ -417,63 +367,6 @@ const styles = StyleSheet.create({
         marginTop: 4,
         textAlign: 'center',
     },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: colors.overlay,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-    },
-    modalContainer: {
-        backgroundColor: colors.cardBackground,
-        borderRadius: 24,
-        width: '100%',
-        maxWidth: 400,
-        shadowColor: colors.shadow,
-        shadowOffset: {
-            width: 0,
-            height: 20,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-        elevation: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    modalHeader: {
-        alignItems: 'center',
-        paddingTop: 32,
-        paddingBottom: 16,
-        paddingHorizontal: 24,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: colors.textPrimary,
-        marginTop: 12,
-        textAlign: 'center',
-        letterSpacing: 0.5,
-    },
-    modalContent: {
-        paddingHorizontal: 24,
-        paddingBottom: 24,
-    },
-    modalMessage: {
-        fontSize: 16,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 8,
-        fontWeight: '500',
-    },
-    modalSubmessage: {
-        fontSize: 14,
-        color: colors.textMuted,
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 20,
-    },
     modalPreview: {
         backgroundColor: colors.tagBackground,
         borderRadius: 16,
@@ -496,53 +389,6 @@ const styles = StyleSheet.create({
         color: colors.textMuted,
         marginLeft: 8,
         fontWeight: '500',
-    },
-    modalActions: {
-        flexDirection: 'row',
-        paddingHorizontal: 24,
-        paddingBottom: 24,
-        gap: 12,
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 8,
-        shadowColor: colors.shadow,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    modalButtonPressed: {
-        transform: [{ scale: 0.96 }],
-        shadowOpacity: 0.05,
-        elevation: 1,
-    },
-    modalCancelButton: {
-        backgroundColor: colors.searchBackground,
-        borderWidth: 2,
-        borderColor: colors.accent,
-    },
-    modalDeleteButton: {
-        backgroundColor: colors.danger,
-    },
-    modalCancelText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.secondary,
-    },
-    modalDeleteText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.white,
     },
     cardContent: {
         padding: 16,

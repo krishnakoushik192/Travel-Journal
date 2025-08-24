@@ -17,6 +17,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useJournalStore } from '../store/Store';
 import colors from '../compoenents/Colors';
 import ImageCarousel from '../compoenents/Carousel';
+import DeleteConfirmationModal from '../compoenents/DeleteConfirmationModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -128,49 +129,13 @@ export default function JournalDetails({ route, navigation }) {
   };
 
   const renderDeleteModal = () => (
-    <Modal
+    <DeleteConfirmationModal
       visible={showDeleteModal}
-      transparent
-      animationType="fade"
-      onRequestClose={cancelDelete}
-    >
-      <View style={styles.deleteModalOverlay}>
-        <View style={styles.deleteModalCard}>
-          <View style={styles.deleteModalHeader}>
-            <MaterialCommunityIcons
-              name="delete-alert-outline"
-              size={moderateScale(48)}
-              color={colors.danger}
-            />
-            <Text style={styles.deleteModalTitle}>Delete Journal Entry</Text>
-            <Text style={styles.deleteModalMessage}>
-              Are you sure you want to delete this journal entry? This action cannot be undone.
-            </Text>
-          </View>
-
-          <View style={styles.deleteModalActions}>
-            <Pressable
-              style={styles.cancelButton}
-              onPress={cancelDelete}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.confirmDeleteButton}
-              onPress={confirmDelete}
-            >
-              <MaterialCommunityIcons
-                name="delete"
-                size={moderateScale(18)}
-                color={colors.white}
-              />
-              <Text style={styles.confirmDeleteButtonText}>Delete</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
+      onConfirm={confirmDelete}
+      onCancel={cancelDelete}
+      title="Delete Journal Entry"
+      message="Are you sure you want to delete this journal entry? This action cannot be undone."
+    />
   );
 
   const renderImageModal = () => (
@@ -608,84 +573,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     marginTop: verticalScale(8),
     fontStyle: 'italic',
-  },
-
-  // Delete Modal styles
-  deleteModalOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(24),
-  },
-  deleteModalCard: {
-    backgroundColor: colors.modalCard,
-    borderRadius: moderateScale(20),
-    padding: moderateScale(24),
-    width: '100%',
-    maxWidth: isTablet ? 400 : width - 48,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  deleteModalHeader: {
-    alignItems: 'center',
-    marginBottom: verticalScale(24),
-  },
-  deleteModalTitle: {
-    fontSize: moderateScale(20),
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: verticalScale(16),
-    marginBottom: verticalScale(8),
-    textAlign: 'center',
-  },
-  deleteModalMessage: {
-    fontSize: moderateScale(16),
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: moderateScale(22),
-  },
-  deleteModalActions: {
-    flexDirection: isSmallScreen ? 'column' : 'row',
-    gap: moderateScale(12),
-    justifyContent: 'space-between',
-  },
-  cancelButton: {
-    flex: isSmallScreen ? undefined : 1,
-    backgroundColor: colors.searchBackground,
-    borderRadius: moderateScale(12),
-    paddingVertical: verticalScale(14),
-    paddingHorizontal: moderateScale(20),
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.textMuted,
-  },
-  cancelButtonText: {
-    color: colors.textPrimary,
-    fontSize: moderateScale(16),
-    fontWeight: '600',
-  },
-  confirmDeleteButton: {
-    flex: isSmallScreen ? undefined : 1,
-    backgroundColor: colors.danger,
-    borderRadius: moderateScale(12),
-    paddingVertical: verticalScale(14),
-    paddingHorizontal: moderateScale(20),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: moderateScale(8),
-  },
-  confirmDeleteButtonText: {
-    color: colors.white,
-    fontSize: moderateScale(16),
-    fontWeight: '700',
   },
 
   // Image Modal styles
