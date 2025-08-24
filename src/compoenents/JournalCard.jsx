@@ -4,17 +4,14 @@ import { Swipeable } from 'react-native-gesture-handler';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useJournalStore } from '../store/Store';
 import colors from './Colors';
+import ImageCarousel from './Carousel';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 
 const JournalCard = ({ nav, item }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const scrollViewRef = useRef(null);
     const swipeableRef = useRef(null);
-    const autoPlayIntervalRef = useRef(null);
     const { removeJournal } = useJournalStore();
 
     // Calculate responsive dimensions
@@ -35,86 +32,6 @@ const JournalCard = ({ nav, item }) => {
     };
 
     const images = getImages();
-
-    // Auto-play functionality
-    useEffect(() => {
-        if (images.length > 1 && isAutoPlaying) {
-            autoPlayIntervalRef.current = setInterval(() => {
-                setCurrentImageIndex((prevIndex) => {
-                    const nextIndex = (prevIndex + 1) % images.length;
-                    if (scrollViewRef.current) {
-                        try {
-                            scrollViewRef.current.scrollTo({
-                                x: nextIndex * cardWidth,
-                                animated: true,
-                            });
-                        } catch (error) {
-                            console.log('Scroll error:', error);
-                        }
-                    }
-                    return nextIndex;
-                });
-            }, 3000);
-        }
-
-        return () => {
-            if (autoPlayIntervalRef.current) {
-                clearInterval(autoPlayIntervalRef.current);
-                autoPlayIntervalRef.current = null;
-            }
-        };
-    }, [images.length, isAutoPlaying, cardWidth]);
-
-    // Pause auto-play when user interacts
-    const pauseAutoPlay = () => {
-        setIsAutoPlaying(false);
-        if (autoPlayIntervalRef.current) {
-            clearInterval(autoPlayIntervalRef.current);
-            autoPlayIntervalRef.current = null;
-        }
-
-        // Resume auto-play after 5 seconds of no interaction
-        setTimeout(() => {
-            setIsAutoPlaying(true);
-        }, 5000);
-    };
-
-    // Handle scroll for image carousel
-    const handleScroll = (event) => {
-        try {
-            const scrollPosition = event.nativeEvent.contentOffset.x;
-            const index = Math.round(scrollPosition / cardWidth);
-            if (index >= 0 && index < images.length) {
-                setCurrentImageIndex(index);
-            }
-            pauseAutoPlay();
-        } catch (error) {
-            console.log('Scroll handler error:', error);
-        }
-    };
-
-    // Navigate to specific image
-    const navigateToImage = (index) => {
-        try {
-            if (index >= 0 && index < images.length) {
-                setCurrentImageIndex(index);
-                pauseAutoPlay();
-                if (scrollViewRef.current) {
-                    scrollViewRef.current.scrollTo({
-                        x: index * cardWidth,
-                        animated: true,
-                    });
-                }
-            }
-        } catch (error) {
-            console.log('Navigate to image error:', error);
-        }
-    };
-
-    // Handle touch start to pause auto-play
-    const handleTouchStart = () => {
-        pauseAutoPlay();
-    };
 
     // Safely generate tags
     const generateTags = () => {
@@ -250,7 +167,7 @@ const JournalCard = ({ nav, item }) => {
                             />
                             <Text style={styles.modalTitle}>Delete Journal Entry</Text>
                         </View>
-                        
+
                         <View style={styles.modalContent}>
                             <Text style={styles.modalMessage}>
                                 Are you sure you want to delete this journal entry?
@@ -258,7 +175,7 @@ const JournalCard = ({ nav, item }) => {
                             <Text style={styles.modalSubmessage}>
                                 This action cannot be undone and all associated data will be permanently removed.
                             </Text>
-                            
+
                             {/* Show journal preview */}
                             <View style={styles.modalPreview}>
                                 <Text style={styles.modalPreviewTitle} numberOfLines={1}>
@@ -276,7 +193,7 @@ const JournalCard = ({ nav, item }) => {
                                 </View>
                             </View>
                         </View>
-                        
+
                         <View style={styles.modalActions}>
                             <Pressable
                                 onPress={handleDeleteCancel}
@@ -288,7 +205,7 @@ const JournalCard = ({ nav, item }) => {
                             >
                                 <Text style={styles.modalCancelText}>Cancel</Text>
                             </Pressable>
-                            
+
                             <Pressable
                                 onPress={handleDeleteConfirm}
                                 style={({ pressed }) => [
@@ -332,64 +249,17 @@ const JournalCard = ({ nav, item }) => {
                             >
                                 <View style={styles.cardInner}>
                                     {/* Image Carousel Section */}
-                                    <View style={styles.imageContainer}>
-                                        <ScrollView
-                                            ref={scrollViewRef}
-                                            horizontal
-                                            pagingEnabled
-                                            showsHorizontalScrollIndicator={false}
-                                            onScroll={handleScroll}
-                                            onTouchStart={handleTouchStart}
-                                            scrollEventThrottle={16}
-                                            style={styles.imageScrollView}
-                                            contentContainerStyle={{ alignItems: 'center' }}
-                                        >
-                                            {images.map((image, index) => (
-                                                <View key={`image-${index}`} style={[styles.imageSlide, { width: cardWidth }]}>
-                                                    <Image
-                                                        source={{ uri: image.url || 'https://via.placeholder.com/400x220/D4E7D4/4A7C59?text=No+Image' }}
-                                                        style={[styles.cardImage, { height: imageHeight }]}
-                                                        resizeMode="cover"
-                                                        onError={(e) => console.log('Image load error:', e)}
-                                                    />
-                                                </View>
-                                            ))}
-                                        </ScrollView>
-
-                                        {/* Image overlay */}
-                                        <View style={[styles.imageOverlay, { height: imageHeight }]} />
-
-                                        {/* Image indicators */}
-                                        {images.length > 1 && (
-                                            <View style={styles.indicatorContainer}>
-                                                {images.map((_, index) => (
-                                                    <Pressable
-                                                        key={`indicator-${index}`}
-                                                        onPress={() => navigateToImage(index)}
-                                                        style={[
-                                                            styles.indicator,
-                                                            {
-                                                                backgroundColor: index === currentImageIndex
-                                                                    ? colors.indicatorActive
-                                                                    : colors.indicatorInactive
-                                                            }
-                                                        ]}
-                                                    />
-                                                ))}
-                                            </View>
-                                        )}
-
-                                        {/* Auto-play indicator */}
-                                        {images.length > 1 && (
-                                            <View style={styles.autoPlayIndicator}>
-                                                <MaterialCommunityIcons
-                                                    name={isAutoPlaying ? "play-circle" : "pause-circle"}
-                                                    size={20}
-                                                    color={colors.white}
-                                                />
-                                            </View>
-                                        )}
-                                    </View>
+                                    <ImageCarousel
+                                        images={images}
+                                        containerWidth={cardWidth}
+                                        imageHeight={imageHeight}
+                                        autoPlay={true}
+                                        autoPlayInterval={3000}
+                                        showIndicators={true}
+                                        showImageCounter={images.length > 1}
+                                        borderRadius={20}
+                                        style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                                    />
 
                                     {/* Content Section */}
                                     <View style={styles.cardContent}>
@@ -673,58 +543,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: colors.white,
-    },
-    imageContainer: {
-        position: 'relative',
-    },
-    imageScrollView: {
-        width: '100%',
-    },
-    imageSlide: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cardImage: {
-        width: '100%',
-        backgroundColor: colors.searchBackground,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-    },
-    imageOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-    },
-    indicatorContainer: {
-        position: 'absolute',
-        bottom: 16,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 8,
-    },
-    indicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: colors.white,
-    },
-    autoPlayIndicator: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        borderRadius: 20,
-        padding: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     cardContent: {
         padding: 16,

@@ -16,6 +16,7 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useJournalStore } from '../store/Store';
 import colors from '../compoenents/Colors';
+import ImageCarousel from '../compoenents/Carousel';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,11 +45,6 @@ export default function JournalDetails({ route, navigation }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
-
-  // Animation values for carousel
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const carouselRef = useRef(null);
 
   // Get journal data from navigation params
   const journal = route?.params?.journal;
@@ -97,41 +93,6 @@ export default function JournalDetails({ route, navigation }) {
     }
   };
 
-  // Carousel navigation functions
-  const goToSlide = (index) => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollTo({
-        x: index * carouselItemWidth,
-        animated: true,
-      });
-      setCurrentCarouselIndex(index);
-    }
-  };
-
-  const handleCarouselScroll = (event) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / carouselItemWidth);
-    setCurrentCarouselIndex(index);
-  };
-
-  const renderCarouselDots = () => {
-    if (!journal.productImage || journal.productImage.length <= 1) return null;
-
-    return (
-      <View style={styles.dotsContainer}>
-        {journal.productImage.map((_, index) => (
-          <Pressable
-            key={index}
-            onPress={() => goToSlide(index)}
-            style={[
-              styles.dot,
-              index === currentCarouselIndex && styles.activeDot
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
 
   const renderImageGallery = () => {
     if (!journal.productImage || journal.productImage.length === 0) {
@@ -139,7 +100,7 @@ export default function JournalDetails({ route, navigation }) {
         <View style={[styles.noImageContainer, { height: imageHeight }]}>
           <MaterialCommunityIcons
             name="camera-off"
-            size={moderateScale(40)}
+            size={40}
             color={colors.textMuted}
           />
           <Text style={styles.noImageText}>No images available</Text>
@@ -149,86 +110,19 @@ export default function JournalDetails({ route, navigation }) {
 
     return (
       <View style={styles.carouselContainer}>
-        {/* Image Carousel */}
-        <ScrollView
-          ref={carouselRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleCarouselScroll}
-          scrollEventThrottle={16}
-          style={styles.carousel}
-          contentContainerStyle={styles.carouselContent}
-        >
-          {journal.productImage.map((image, index) => (
-            <Pressable
-              key={index}
-              style={[styles.carouselItem, { width: carouselItemWidth }]}
-              onPress={() => openImageModal(index)}
-            >
-              <Image
-                source={{ uri: image.url }}
-                style={[styles.carouselImage, { height: imageHeight }]}
-                resizeMode="cover"
-              />
-              <View style={styles.expandIcon}>
-                <MaterialCommunityIcons
-                  name="magnify-plus-outline"
-                  size={moderateScale(20)}
-                  color={colors.white}
-                />
-              </View>
-              {/* Image counter */}
-              {journal.productImage.length > 1 && (
-                <View style={styles.imageCounter}>
-                  <Text style={styles.imageCountText}>
-                    {index + 1} / {journal.productImage.length}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Carousel indicators */}
-        {renderCarouselDots()}
-
-        {/* Thumbnail navigation for multiple images */}
-        {journal.productImage.length > 1 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.thumbnailStrip}
-            contentContainerStyle={styles.thumbnailContainer}
-          >
-            {journal.productImage.map((image, index) => (
-              <Pressable
-                key={index}
-                style={[
-                  styles.thumbnailWrapper,
-                  { width: thumbnailSize, height: thumbnailSize },
-                  index === currentCarouselIndex && styles.activeThumbnail
-                ]}
-                onPress={() => goToSlide(index)}
-              >
-                <Image
-                  source={{ uri: image.url }}
-                  style={[styles.thumbnail, { width: thumbnailSize, height: thumbnailSize }]}
-                  resizeMode="cover"
-                />
-                {index === currentCarouselIndex && (
-                  <View style={styles.activeThumbnailOverlay}>
-                    <MaterialCommunityIcons
-                      name="check-circle"
-                      size={moderateScale(16)}
-                      color={colors.primary}
-                    />
-                  </View>
-                )}
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+        {/* Replace the existing carousel with ImageCarousel component */}
+        <ImageCarousel
+          images={journal.productImage}
+          containerWidth={carouselItemWidth}
+          imageHeight={imageHeight}
+          autoPlay={false} // Disable autoplay in detail view
+          showIndicators={true}
+          showThumbnails={journal.productImage.length > 1}
+          showImageCounter={true}
+          showExpandIcon={true}
+          onImagePress={openImageModal}
+          thumbnailSize={60}
+        />
       </View>
     );
   };
@@ -561,100 +455,6 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(24),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-
-  // Carousel styles
-  carouselContainer: {
-    width: '100%',
-  },
-  carousel: {
-    width: '100%',
-  },
-  carouselContent: {
-    alignItems: 'center',
-  },
-  carouselItem: {
-    position: 'relative',
-    borderRadius: 0,
-    overflow: 'hidden',
-  },
-  carouselImage: {
-    width: '100%',
-    borderRadius: 0,
-  },
-  expandIcon: {
-    position: 'absolute',
-    top: moderateScale(12),
-    right: moderateScale(12),
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: moderateScale(20),
-    padding: moderateScale(8),
-  },
-  imageCounter: {
-    position: 'absolute',
-    top: moderateScale(12),
-    left: moderateScale(12),
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: moderateScale(16),
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: moderateScale(6),
-  },
-  imageCountText: {
-    color: colors.white,
-    fontSize: moderateScale(12),
-    fontWeight: '600',
-  },
-
-  // Dots indicator
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: verticalScale(12),
-    backgroundColor: colors.searchBackground,
-    gap: moderateScale(6),
-  },
-  dot: {
-    width: moderateScale(8),
-    height: moderateScale(8),
-    borderRadius: moderateScale(4),
-    backgroundColor: 'rgba(45, 80, 22, 0.3)',
-  },
-  activeDot: {
-    backgroundColor: colors.primary,
-    width: moderateScale(20),
-  },
-
-  // Thumbnail strip
-  thumbnailStrip: {
-    backgroundColor: colors.searchBackground,
-    paddingVertical: verticalScale(8),
-  },
-  thumbnailContainer: {
-    paddingHorizontal: moderateScale(12),
-    gap: moderateScale(8),
-    alignItems: 'center',
-  },
-  thumbnailWrapper: {
-    position: 'relative',
-    borderRadius: moderateScale(8),
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  activeThumbnail: {
-    borderColor: colors.primary,
-  },
-  thumbnail: {
-    borderRadius: moderateScale(6),
-  },
-  activeThumbnailOverlay: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: colors.white,
-    borderRadius: moderateScale(12),
-    padding: moderateScale(2),
   },
 
   // Content styles
