@@ -1,0 +1,26 @@
+const colors = {
+    primary: '#2D5016',
+    secondary: '#4A7C59',
+    accent: '#6B9080',
+    background: '#A4C3A2',
+    cardBackground: '#E8F5E8',
+    searchBackground: '#D4E7D4',
+    textPrimary: '#1B3409',
+    textSecondary: '#4A5D4A',
+    textMuted: '#6B7B6B',
+    tagBackground: '#F0F8F0',
+    shadow: '#2D5016',
+    overlay: 'rgba(0, 0, 0, 0.4)',
+    white: '#FFFFFF',
+    danger: '#C53030',
+    favorite: '#E53E3E',
+    modalBackground: 'rgba(0, 0, 0, 0.5)',
+    modalCard: '#E8F5E8',
+    selectedTag: '#6B9080',
+    unselectedTag: '#D4E7D4',
+    indicatorActive: '#4A7C59',
+    indicatorInactive: 'rgba(74, 124, 89, 0.3)',
+    dangerBackground: '#FED7D7',
+};
+
+export default colors;

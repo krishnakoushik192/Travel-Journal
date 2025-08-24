@@ -25,26 +25,11 @@ import Header from '../compoenents/Header';
 import Geolocation from 'react-native-geolocation-service';
 import { useJournalStore } from '../store/Store';
 import { getImageTags } from '../compoenents/VisionApi';
+import colors from '../compoenents/Colors';
 
 const { width, height } = Dimensions.get('window');
 
 // Theme colors
-const colors = {
-  primary: '#2D5016', // Deep forest green
-  secondary: '#4A7C59', // Medium forest green
-  accent: '#6B9080', // Sage green
-  background: '#A4C3A2', // Light sage
-  cardBackground: '#E8F5E8', // Very light mint
-  searchBackground: '#D4E7D4', // Light mint
-  textPrimary: '#1B3409', // Very dark green
-  textSecondary: '#4A5D4A', // Medium dark green
-  textMuted: '#6B7B6B', // Muted green-gray
-  tagBackground: '#F0F8F0', // Almost white with green tint
-  shadow: '#2D5016', // Deep green shadow
-  overlay: 'rgba(0, 0, 0, 0.4)', 
-  white: '#FFFFFF',
-  danger: '#C53030',
-};
 
 const AddEditJournalScreen = ({ route, navigation }) => {
   const [internetAvailable, setInternetAvailable] = useState(false)

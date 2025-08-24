@@ -16,26 +16,11 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { supabase } from '../services/supabaseClient';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import colors from '../compoenents/Colors';
 
 const { width, height } = Dimensions.get('window');
 
 // Same color palette as previous screens
-const colors = {
-  primary: '#2D5016', // Deep forest green
-  secondary: '#4A7C59', // Medium forest green
-  accent: '#6B9080', // Sage green
-  background: '#A4C3A2', // Light sage
-  cardBackground: '#E8F5E8', // Very light mint
-  searchBackground: '#D4E7D4', // Light mint
-  textPrimary: '#1B3409', // Very dark green
-  textSecondary: '#4A5D4A', // Medium dark green
-  textMuted: '#6B7B6B', // Muted green-gray
-  tagBackground: '#F0F8F0', // Almost white with green tint
-  shadow: '#2D5016', // Deep green shadow
-  overlay: 'rgba(0, 0, 0, 0.4)', // Deep green overlay
-  white: '#FFFFFF',
-  danger: '#C53030',
-};
 
 export default function Accounts(props) {
   const navigation = useNavigation();
