@@ -170,6 +170,24 @@ const JournalCard = ({ nav, item }) => {
                     <Swipeable
                         ref={swipeableRef}
                         onSwipeableOpen={onSwipeOpen}
+                        renderRightActions={() => (
+                            <View style={styles.deleteActionContainer}>
+                                <Pressable
+                                    onPress={handleDeletePress}
+                                    style={({ pressed }) => [
+                                        styles.deleteButton,
+                                        pressed && styles.deleteButtonPressed
+                                    ]}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="trash-can-outline"
+                                        size={24}
+                                        color={colors.white}
+                                    />
+                                    <Text style={styles.deleteButtonText}>Delete</Text>
+                                </Pressable>
+                            </View>
+                        )}
                         rightThreshold={40}
                         friction={2}
                     >
